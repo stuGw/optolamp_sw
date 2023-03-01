@@ -64,7 +64,7 @@ void RTCIrq_Handler()
 
 void DMA_2_3_Handler()
 {
-	stopWSDMA();
+//	stopWSDMA();
 		 DMA->IFCR|=0x00000010;//DMA_IFCR_CGIF6;
 }
 
@@ -102,10 +102,10 @@ void SysTick_Handler()
 
 void EXTI0_Handler()
 {
-	if(EXTI->RPR1 & 0x0001){ EXTI->RPR1 |= 0x0001; bLeft.rise();  LOG->DEBG("BUP rise"); }
-	if(EXTI->RPR1 & 0x0002){ EXTI->RPR1 |= 0x0002; bRight.rise();  LOG->DEBG("BDN rise"); }
-	if(EXTI->FPR1 & 0x0001){ EXTI->FPR1 |= 0x0001; bLeft.fall();  LOG->DEBG("BUP fall"); }
-	if(EXTI->FPR1 & 0x0002){ EXTI->FPR1 |= 0x0002; bRight.fall();  LOG->DEBG("BDN fall"); }
+	if(EXTI->RPR1 & 0x0001){ EXTI->RPR1 |= 0x0001; bLeft.rise();  /*LOG->DEBG("BUP rise");*/ }
+	if(EXTI->RPR1 & 0x0002){ EXTI->RPR1 |= 0x0002; bRight.rise();  /*LOG->DEBG("BDN rise");*/ }
+	if(EXTI->FPR1 & 0x0001){ EXTI->FPR1 |= 0x0001; bLeft.fall();  /*LOG->DEBG("BUP fall");*/ }
+	if(EXTI->FPR1 & 0x0002){ EXTI->FPR1 |= 0x0002; bRight.fall();  /*LOG->DEBG("BDN fall");*/ }
 }
 
 
@@ -134,8 +134,9 @@ void initializeModules()
 		LOG->DEBG("Initialize adc...");
 		lightSensor.init();
 		//PA7 - ADC7 - current, PB0 - ADC_8 - 60v voltage, PA6 - ADC6 - 12v voltage
-		//lightSensor.initChannels(AnalogConverter::ADC_7 | AnalogConverter::ADC_6 | AnalogConverter::ADC_8 | AnalogConverter::ADC_12 | AnalogConverter::ADC_13);
+		lightSensor.initChannels(AnalogConverter::ADC_7);
 
+		lightSensor.getDataFiltered(AnalogConverter::ADC_7);
 		LOG->DEBG("Initialize button interface...");
 		bLeft.init(&(GPIOA->IDR), GPIOPIN_0, 700, 530);
 		bRight.init(&(GPIOA->IDR), GPIOPIN_1, 700, 530);
@@ -145,18 +146,60 @@ int main(void)
 {
 	initializeHw();
 	initializeModules();
-	initWSTimer();
+
 	initializeDMA();
+	initWSTimer();
 	NVIC->ISER |= (1 << 10); // enable interrupt # 28 (USART2)
 	NVIC->ISER |= (1 << 16); // enable interrupt # 28 (USART2)
 
 	initWs2812Buff();
-		setAllLedsBright(0);
+		setAllLedsBright(10);
 		setLedMode(LED_CIRC);
-		setAllLedsColor(WS_GREEN);
-		setAllLedsSat(100);
-		startWsTransfer();
+		setAllLedsColor(500);
+		//setAllLedsSat(100);
+		//startWsTransfer();
 		LOG->DEBG("ALl ready!");
     /* Loop forever */
-	for(;;);
+	for(;;)
+	{
+		static uint16_t ledColor { 0 };
+		static uint8_t ledBright { 1 };
+		static uint16_t sensorValue { 0 };
+		uint8_t buttonLeftState { 0 };
+		uint8_t buttonRightState { 0 };
+
+		if(flagButt)
+		{
+			sensorValue = lightSensor.getDataFiltered(AnalogConverter::ADC_7);
+			LOG->DEBG("Light = ", sensorValue);
+			uint16_t value = WS_MAX_BRIGHT - (sensorValue/100);
+			if(value<1)value = 1;
+			if(value>WS_MAX_BRIGHT) value = WS_MAX_BRIGHT;
+			setAllLedsBright(value);
+			flagSecund = 0;
+		}
+
+		if(flagButt)
+		{
+			buttonLeftState = bLeft.getState();
+			buttonRightState = bRight.getState();
+			flagButt = 0;
+		}
+		if(buttonLeftState == Button::DOUBLE)
+		{
+			LOG->DEBG("Left DOUBLE");
+			ledColor+=100;
+			if(ledColor>=WS_RGB_COLORS) ledColor = 0;
+			setAllLedsColor(ledColor);
+		}
+
+		if(buttonRightState == Button::SINGLE)
+				{
+			LOG->DEBG("Right SINGLE");
+					ledBright++;
+					if(ledBright>=WS_MAX_BRIGHT) ledBright = 0;
+					setAllLedsBright(ledBright);
+				}
+
+		}
 }

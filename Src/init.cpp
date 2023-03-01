@@ -51,6 +51,9 @@ typedef void (*fptr)(void);
 #pragma GCC push_options
 #pragma GCC optimize ("O0")
 
+
+uint32_t testArr[32] { 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31};
+
 const fptr Vectors[] __attribute__((section(".vectors"))) ={
 	(fptr)0x20002000, 	/* Top of stack (8k) */
 	init,   		/* Reset Handler */
@@ -233,7 +236,7 @@ void initWSTimer()
 	GPIOA->MODER &= ~0x00001000;
 	GPIOA->MODER |=  0x00002000;
 	GPIOA->OTYPER |= 0x00000040;
-
+GPIOA->OSPEEDR |= 0x00003000;
 
 		RCC->APBENR1 |= 0x00000002;
 //		RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;  // Enable TIM2 Periph clock
@@ -245,14 +248,14 @@ void initWSTimer()
 
 	//	AFIO->MAPR &= ~AFIO_MAPR_TIM3_REMAP;
 	//	AFIO->MAPR |= AFIO_MAPR_TIM3_REMAP_1;
-
-		TIM3->ARR = 49;//old 59 for 48MHz
+TIM3->PSC = 0;
+		TIM3->ARR = 79;//old 59 for 48MHz
 		TIM3->CCER |= 0x0001;
 
 		//0x00000060 OC1M_1 & OC1M_2
 		//0x00000008 OC1PE
 		TIM3->CCMR1_Output |= 0x00000068;// TIM_CCMR1_OC1M_1 | TIM_CCMR1_OC1M_2|TIM_CCMR1_OC1PE ;
-		TIM3->CCR1 = 0x0013;
+		TIM3->CCR1 = 59;
 		//TIM3->DIER   |= TIM_DIER_CC1DE | TIM_DIER_UIE;
 		TIM3->DIER |= 0x0201;
 }
@@ -284,33 +287,51 @@ void stopTimer3()
 	DMA1_Channel6->CCR|=DMA_CCR_PL_0;
 }
 */
-
+uint32_t testAddr[WS_COUNT_BITS];
 
 void initializeDMA()
 {
+
+	testAddr[0] = 0x1;
+	testAddr[1] = 0x2;
+	testAddr[2] = 0x3;
+	testAddr[3] = 0x4;
+	testAddr[4] = 0x5;
+	testAddr[5] = 0x6;
+	testAddr[6] = 0x7;
+	testAddr[7] = 0x8;
+	testAddr[8] = 0x9;
+	testAddr[9] = 0xa;
+	testAddr[10] = 0xb;
+	testAddr[11] = 0xc;
+	testAddr[12] = 0xd;
+	testAddr[13] = 0xe;
+	testAddr[14] = 0xf;
+	testAddr[WS_COUNT_BITS-1] = 0xf0f0f0f0;
+
 	RCC->AHBENR |= 0x00000001;//enable DMA clock
-	DMA->CMAR2 = reinterpret_cast<uint32_t>(hwLedAdress);
-	DMA->CPAR2 = reinterpret_cast<uint32_t>(&TIM3->CCR1);
+	DMA->CMAR2 = (uint32_t)hwLedAdress;
+	DMA->CPAR2 = (uint32_t)&TIM3->CCR1;
 
-		 DMA->CNDTR2 = WS_COUNT_BITS;
-		 //MINC - 				  0x00000080
-		 //DIR(read from mem ) -  0x00000010
-		 //PSIZE_0(16 bit) - 	  0x00000100
-		 //TCIE - 				  0x00000002
+	DMA->CNDTR2 = WS_COUNT_BITS;
+	//MINC - 				  0x00000080
+	//DIR(read from mem ) -  0x00000010
+	//PSIZE_0(16 bit) - 	  0x00000100
+	//TCIE - 				  0x00000002
 
-		 DMA->CCR2 |= 0x00000192;
-			//	 0x000005a0;//configure MSIZE 16bit, PSIZE 16bit, CIRC mode, MEmory increment
+	DMA->CCR2 |= 0x00000192;
+	//	 0x000005a0;//configure MSIZE 16bit, PSIZE 16bit, CIRC mode, MEmory increment
 
-		 DMAMUX->C1CR |= 0x00000005;//ADC Request input
-		 DMA->CCR2 |= 0x00000002;//transfer complete ipt enable
-		 NVIC->ISER |= (1<<10);//enable ipt dma channel1
-		 DMA->CCR2 |= 0x00003000;
-		 //DMA->CCR2 |= 0x00000001;//enable
+	DMAMUX->C1CR |= 0x00000020;//ADC Request input
+//	DMA->CCR2 |= 0x00000002;//transfer complete ipt enable
+	NVIC->ISER |= (1<<10);//enable ipt dma channel1
+	DMA->CCR2 |= 0x00003000;
+	//DMA->CCR2 |= 0x00000001;//enable
 }
 void startWSDMA(void)
 {
 	DMA->CNDTR2 = WS_COUNT_BITS;
-	DMA->CCR2 = 0x00003190;//DMA_CCR_MINC | DMA_CCR_DIR | DMA_CCR_EN | DMA_CCR_PSIZE_0|DMA_CCR_TCIE|DMA_CCR_PL_0|DMA_CCR_PL_1;
+	DMA->CCR2 |= 0x00003191;//DMA_CCR_MINC | DMA_CCR_DIR | DMA_CCR_EN | DMA_CCR_PSIZE_0|DMA_CCR_TCIE|DMA_CCR_PL_0|DMA_CCR_PL_1;
 }
 
 void stopWSDMA(void)
@@ -322,13 +343,15 @@ void startWSDMACircle()
 {
 	DMA->CNDTR2 = WS_COUNT_BITS;
 	DMA->CCR2 = 0x00003192;//DMA_CCR_MINC | DMA_CCR_DIR | DMA_CCR_EN | DMA_CCR_PSIZE_0|DMA_CCR_CIRC|DMA_CCR_PL_0|DMA_CCR_PL_1;
+	DMA->CCR2 |= 0x00000020;
+	DMA->CCR2 |= 0x00000001;
 }
 
 
 void startWsTransfer(void)
 {
 
-	if(flgWSTransfer)return;//Ждем когда закончится предыдущая передача
+	//if(flgWSTransfer)return;//Ждем когда закончится предыдущая передача
 	flgWSTransfer = 1;//Флаг начала передачи
 //	stopLightSensDMA();//Выкл. канал датчика освещения т.к. он прерывает канал WS
 	startWSDMA();
@@ -345,6 +368,7 @@ void wsDmaTmOnce(void)
 {
 	DMA->CCR2&= ~0x0020;
 	DMA->CCR2|=0x0002;
+	TIM3->DIER |= 0x0200;
 	TIM3->DIER|=0x01;
 }
 

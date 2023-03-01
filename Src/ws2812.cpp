@@ -339,7 +339,7 @@ void initWs2812Buff()
 	memset(hwBuff.res,0,WS_RES_VAL);
 
 	i = 0;
-	while(i<6)
+	while(i<WS_LED_COUNT)
 	{
 		register unsigned char j = 0;
 		while(j<8)

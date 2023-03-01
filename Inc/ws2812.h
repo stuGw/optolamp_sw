@@ -37,6 +37,19 @@ RES - |_______TRES_______|     - код RES (установки значений
 Чтобы записанные в память значения стали активными(светодиоды загорелись), нужно подать сигнал RES
 (подать на вход низкий уровень на время TRES)/
 */
+//TIMER_ARR_VALUE Must be set to generate frequency 800KHz, 80 for 16bit timer, for 64MHz clock
+//see it at timer configure function!
+#define TIMER_ARR_VALUE 80
+
+#define T_PERIOD_US 1.25
+
+#define T0_H_VALUE_US 0.35
+#define T1_H_VALUE_US 0.9
+
+//22
+#define WS_H0 ((unsigned char)(T0_H_VALUE_US/(T_PERIOD_US/TIMER_ARR_VALUE)))
+//58
+#define WS_H1 ((unsigned char)(T1_H_VALUE_US/(T_PERIOD_US/TIMER_ARR_VALUE)))
 
 #define RNB_RUE_DIFF 10
 #define LED_ONCE 0x01
@@ -63,10 +76,16 @@ RES - |_______TRES_______|     - код RES (установки значений
 //19 - 14chn
 //38 - 38chn
 //#define WS_H0 19-1
-//#define WS_H1 38-1 
+//#define WS_H1 38-1
 
-#define WS_H0 15
-#define WS_H1 30
+//#define WS_H0 15
+//#define WS_H1 30
+
+//#define WS_H0 15
+//#define WS_H1 30
+
+
+
 
 #define WS_LED_COUNT 32
 #define WS_RES_VAL 64

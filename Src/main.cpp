@@ -57,14 +57,14 @@ volatile bool flagSecund { false };
 
 void RTCIrq_Handler()
 {
-	if((RTC->MISR & 0x00000001) == 0x00000001){ RTC->SCR |= 0x00000001; flagMinute = 1;}
+	if((RTC->MISR & 0x00000001) == 0x00000001){ RTC->SCR |= 0x00000001; flagMinute = 1; }
 	if((RTC->MISR & 0x00000002) == 0x00000002){ RTC->SCR |= 0x00000002; flagSecund = 1; }
 	led->on();
 }
 
 void DMA_2_3_Handler()
 {
-//	stopWSDMA();
+	stopWSDMA();
 		 DMA->IFCR|=0x00000010;//DMA_IFCR_CGIF6;
 }
 
@@ -154,10 +154,9 @@ int main(void)
 
 	initWs2812Buff();
 		setAllLedsBright(10);
-		setLedMode(LED_CIRC);
+		setLedMode(LED_ONCE);
 		setAllLedsColor(500);
-		//setAllLedsSat(100);
-		//startWsTransfer();
+
 		LOG->DEBG("ALl ready!");
     /* Loop forever */
 	for(;;)
@@ -170,12 +169,14 @@ int main(void)
 
 		if(flagButt)
 		{
+			static uint16_t lastBrightValue { 0 };
 			sensorValue = lightSensor.getDataFiltered(AnalogConverter::ADC_7);
 			LOG->DEBG("Light = ", sensorValue);
 			uint16_t value = WS_MAX_BRIGHT - (sensorValue/100);
 			if(value<1)value = 1;
 			if(value>WS_MAX_BRIGHT) value = WS_MAX_BRIGHT;
-			setAllLedsBright(value);
+			if(value!= lastBrightValue){ setAllLedsBright(value); lastBrightValue = value; };
+
 			flagSecund = 0;
 		}
 
@@ -191,6 +192,7 @@ int main(void)
 			ledColor+=100;
 			if(ledColor>=WS_RGB_COLORS) ledColor = 0;
 			setAllLedsColor(ledColor);
+
 		}
 
 		if(buttonRightState == Button::SINGLE)
@@ -199,6 +201,7 @@ int main(void)
 					ledBright++;
 					if(ledBright>=WS_MAX_BRIGHT) ledBright = 0;
 					setAllLedsBright(ledBright);
+
 				}
 
 		}

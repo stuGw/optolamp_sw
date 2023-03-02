@@ -472,12 +472,14 @@ void setAllLedsBright(unsigned char bright)
 	int i = 0;
 	brightAllLed = bright;
 	while(i<WS_LED_COUNT){setLedBright(i,bright);i++;}
+	if(ledMode == LED_ONCE) startWsTransfer();
 }
 
 void setAllLedsColor(unsigned short int color)
 {
 	int i = 0;
 	while(i<WS_LED_COUNT){setLedColor(i,color);i++;}
+	if(ledMode == LED_ONCE) startWsTransfer();
 }
 
 void setAllLedsSat(unsigned char sat)

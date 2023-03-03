@@ -26,6 +26,7 @@
 #include "logger.h"
 #include "init.h"
 #include "ws2812.h"
+#include "SmartPixelStrip.h"
 
 #if !defined(__SOFT_FP__) && defined(__ARM_FP)
   #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
@@ -146,7 +147,7 @@ int main(void)
 {
 	initializeHw();
 	initializeModules();
-
+SmartPixelStrip* ledstrip = new SmartPixelStrip(32,SmartPixelStrip::WS2812);
 	initializeDMA();
 	initWSTimer();
 	NVIC->ISER |= (1 << 10); // enable interrupt # 28 (USART2)

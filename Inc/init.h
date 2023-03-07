@@ -47,12 +47,12 @@ void initWSTimer();
 void startTimer3();
 void stopTimer3();
 
-void initializeDMA();
-void startWSDMA(void);
+void initializeDMA(uint32_t* address, uint32_t count);
+void startWSDMA(uint32_t count);
 void stopWSDMA(void);
 //Постоянная передача на все диоды
 void startWSDMACircle();
-void startWsTransfer(void);
+void startWsTransfer(uint32_t count);
 
 void wsDmaTmCirc(void);
 //Режим одиночной передачи для ws

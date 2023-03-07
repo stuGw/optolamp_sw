@@ -436,7 +436,7 @@ void setLedAutoBright(unsigned short int bright)
 		{
 			brStd = bright/3;
 			if(brStd<1)brStd = 1; if(brStd>21)brStd = 21;
-			if(brStd!=prevBrStd){ prevBrStd = brStd; setAllLedsBright(brStd); if(ledMode == LED_ONCE)startWsTransfer();}
+			if(brStd!=prevBrStd){ prevBrStd = brStd; setAllLedsBright(brStd); if(ledMode == LED_ONCE)startWsTransfer(WS_COUNT_BITS);}
 		}
 }
 void setLedBright(unsigned char led, unsigned char bright)
@@ -472,14 +472,14 @@ void setAllLedsBright(unsigned char bright)
 	int i = 0;
 	brightAllLed = bright;
 	while(i<WS_LED_COUNT){setLedBright(i,bright);i++;}
-	if(ledMode == LED_ONCE) startWsTransfer();
+	if(ledMode == LED_ONCE) startWsTransfer(WS_COUNT_BITS);
 }
 
 void setAllLedsColor(unsigned short int color)
 {
 	int i = 0;
 	while(i<WS_LED_COUNT){setLedColor(i,color);i++;}
-	if(ledMode == LED_ONCE) startWsTransfer();
+	if(ledMode == LED_ONCE) startWsTransfer(WS_COUNT_BITS);
 }
 
 void setAllLedsSat(unsigned char sat)

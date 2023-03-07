@@ -7,71 +7,96 @@
 
 #include <SmartPixelStrip.h>
 
-SmartPixelStrip::SmartPixelStrip(uint32_t count, PixelStripType type)
+SmartPixelStrip::SmartPixelStrip(uint32_t count, PixelStripType type, PixelStripMode mode, void (*transferFunction)(uint32_t))
 {
 	if(!count) return;
 	pixelCount = count;
 	ledType = type;
+	transferMode = mode;
+	startTransfer = transferFunction;
 	switch (type)
 	{
-	case WS2812:
-	{
-		initializeWS2812Strip();
-		leds = new SmartPixel[pixelCount];
-		break;
+		case WS2812:
+		{
+			leds = new SmartPixel[pixelCount];
+			initializeWS2812Strip();
+
+			break;
+		}
+		case SK6812RGBW:
+		{
+			leds = new SmartPixelW[pixelCount];
+			initializeSK6812RGBWStrip();
+
+
+		}
 	}
-	case SK6812RGBW:
-	{
-		initializeSK6812RGBWStrip();
-		leds = new SmartPixelW[pixelCount];
-		leds->setWhite(255);
-	}
-	}
-
-
-
-
 
 }
 
 void SmartPixelStrip::initializeWS2812Strip()
 {
 	ledCountColors = RGB_COUNT_COLORS;
-	packet.ledHwPix = new uint8_t[pixelCount*ledCountColors];
-	packet.res = new uint8_t[resetTiming];
+    packet = new uint8_t[pixelCount*ledCountColors*HW_BYTES_PER_COLOR + resetBytes];
+    //packet.res = new uint8_t[resetTiming];
+    for(int i = 0; i < pixelCount; i++)
+    {
+        leds[i].setHwPtr(&(packet[resetBytes + i*ledCountColors*HW_BYTES_PER_COLOR]));
+    }
+
+    for(int i = 0; i<(pixelCount*ledCountColors*HW_BYTES_PER_COLOR + resetBytes); i++)
+    {
+
+    	if(i<resetBytes)packet[i] = 0;
+    	else
+        packet[i] = SmartPixel::HW_0;
+
+    }
 }
 
 void SmartPixelStrip::initializeSK6812RGBWStrip()
 {
-	ledCountColors = RGBW_COUNT_COLORS;
-	packet.ledHwPix = new uint8_t[pixelCount*ledCountColors];
-	packet.res = new uint8_t[resetTiming];
+    ledCountColors = RGBW_COUNT_COLORS;
+    packet = new uint8_t[pixelCount*ledCountColors*HW_BYTES_PER_COLOR + resetBytes];
+    //packet.res = new uint8_t[resetTiming];
+    for(int i = 0; i < pixelCount; i++)
+    {
+        leds[i].setHwPtr(&(packet[i*ledCountColors*HW_BYTES_PER_COLOR]));
+    }
+
+    for(int i = 0; i<(pixelCount*ledCountColors*HW_BYTES_PER_COLOR + resetBytes); i++)
+    {
+        packet[i] = SmartPixel::HW_0;
+
+    }
+
 }
 
-
-
-void SmartPixelStrip::setPixelHwColorRed(uint32_t id, uint8_t color)
+void SmartPixelStrip::setBright(uint8_t bright)
 {
-	for(uint8_t mask = 1; mask>0; mask = mask<<1)
+	for(int i = 0; i<pixelCount; i++)
 	{
-		packet.ledHwPix[id].setRed(color&mask, mask);
+			leds[i].setBright(bright);
 	}
+
 }
 
-void SmartPixelStrip::setPixelHwColorGreen(uint32_t id, uint8_t color)
+void SmartPixelStrip::setColor(uint16_t color)
 {
-	for(uint8_t mask = 1; mask>0; mask = mask<<1)
+	for(int i = 0; i<pixelCount; i++)
 	{
-		packet.ledHwPix[id].setGreen(color&mask, mask);
+			leds[i].setColor(color);
 	}
+
 }
 
-void SmartPixelStrip::setPixelHwColorBlue(uint32_t id, uint8_t color)
+void SmartPixelStrip::refresh()
 {
-	for(uint8_t mask = 1; mask>0; mask = mask<<1)
+	for(int i = 0; i<pixelCount; i++)
 	{
-		packet.ledHwPix[id].setBlue(color&mask, mask);
+		leds[i].hwRefresh();
 	}
+	if(transferMode == ONCE_MODE)startTransfer(hwSize());
 }
 
 SmartPixelStrip::~SmartPixelStrip() {

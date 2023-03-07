@@ -37,7 +37,7 @@
 
 Button bLeft;
 Button bRight;
-
+uint32_t* hwLA;
 AnalogConverter lightSensor;
 Serial serial;//serial, using in logger &
 Led *led;//just led
@@ -66,6 +66,7 @@ void RTCIrq_Handler()
 void DMA_2_3_Handler()
 {
 	stopWSDMA();
+	//stopTimer3();
 		 DMA->IFCR|=0x00000010;//DMA_IFCR_CGIF6;
 }
 
@@ -74,7 +75,7 @@ void DMA_2_3_Handler()
 void TIM3_Handler(void)
 {
 	static int counter = 0;
-	if(counter>=LED_HW_LENGTH)
+/*	if(counter>=1*24+5)
 	{
 		stopTimer3();
 		//startLightSensDMA();//Запускаем канал LightSens
@@ -82,7 +83,9 @@ void TIM3_Handler(void)
 		counter = 0;
 	}
 	else
-		counter++;
+		counter++;*/
+	if(!(DMA->CCR2&0x0001))stopTimer3();
+	if( DMA->IFCR &0x00000010)stopTimer3();//DMA_IFCR_CGIF6;)
 	TIM3->SR &= ~0x0001; //Clean UIF Flag
 }
 
@@ -145,19 +148,53 @@ void initializeModules()
 
 int main(void)
 {
+
+	SmartPixelStrip* ledstrip = new SmartPixelStrip(32,SmartPixelStrip::WS2812, SmartPixelStrip::ONCE_MODE, startWsTransfer);
+	hwLA = ledstrip->getHwAdress();
 	initializeHw();
 	initializeModules();
-SmartPixelStrip* ledstrip = new SmartPixelStrip(32,SmartPixelStrip::WS2812);
-	initializeDMA();
+	uint32_t* address;
+
+	initializeDMA(address, ledstrip->hwSize());
+
 	initWSTimer();
 	NVIC->ISER |= (1 << 10); // enable interrupt # 28 (USART2)
 	NVIC->ISER |= (1 << 16); // enable interrupt # 28 (USART2)
 
-	initWs2812Buff();
-		setAllLedsBright(10);
+//	initWs2812Buff();
+		//setAllLedsBright(10);
 		setLedMode(LED_ONCE);
-		setAllLedsColor(500);
+	//	setAllLedsColor(500);
 
+
+		ledstrip->getLed(0)->setGreen(1);
+		ledstrip->getLed(0)->setBright(21);
+
+
+
+		ledstrip->getLed(1)->setRed(2);
+		ledstrip->getLed(1)->setBright(21);
+
+
+		ledstrip->getLed(2)->setBlue(3);
+		ledstrip->getLed(2)->setBright(21);
+
+
+		ledstrip->getLed(3)->setGreen(4);
+		ledstrip->getLed(3)->setRed(255);
+		ledstrip->getLed(3)->setBright(21);
+
+
+		ledstrip->getLed(4)->setGreen(5);
+		ledstrip->getLed(4)->setBlue(255);
+		ledstrip->getLed(4)->setBright(21);
+
+//	ledstrip->setBright(value);
+		ledstrip->refresh();
+
+
+
+	//	startWsTransfer();
 		LOG->DEBG("ALl ready!");
     /* Loop forever */
 	for(;;)
@@ -176,7 +213,7 @@ SmartPixelStrip* ledstrip = new SmartPixelStrip(32,SmartPixelStrip::WS2812);
 			uint16_t value = WS_MAX_BRIGHT - (sensorValue/100);
 			if(value<1)value = 1;
 			if(value>WS_MAX_BRIGHT) value = WS_MAX_BRIGHT;
-			if(value!= lastBrightValue){ setAllLedsBright(value); lastBrightValue = value; };
+			if(value!= lastBrightValue){  lastBrightValue = value; };
 
 			flagSecund = 0;
 		}
@@ -190,10 +227,11 @@ SmartPixelStrip* ledstrip = new SmartPixelStrip(32,SmartPixelStrip::WS2812);
 		if(buttonLeftState == Button::DOUBLE)
 		{
 			LOG->DEBG("Left DOUBLE");
-			ledColor+=100;
-			if(ledColor>=WS_RGB_COLORS) ledColor = 0;
-			setAllLedsColor(ledColor);
-
+static uint16_t color { 0 };
+			color +=50;
+if(color>1500) color = 0;
+			ledstrip->setColor(color);
+			ledstrip->refresh();
 		}
 
 		if(buttonRightState == Button::SINGLE)
@@ -201,7 +239,8 @@ SmartPixelStrip* ledstrip = new SmartPixelStrip(32,SmartPixelStrip::WS2812);
 			LOG->DEBG("Right SINGLE");
 					ledBright++;
 					if(ledBright>=WS_MAX_BRIGHT) ledBright = 0;
-					setAllLedsBright(ledBright);
+					ledstrip->setBright(ledBright);
+						ledstrip->refresh();
 
 				}
 

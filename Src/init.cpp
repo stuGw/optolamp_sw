@@ -38,7 +38,7 @@ extern unsigned char  _ebss;//BSS_END;
 //#define __bss_start__ BSS_START
 //#define __bss_end__ BSS_END
 
-extern uint32_t hwLedAdress;
+extern uint32_t* hwLA;
 extern uint8_t flgWSTransfer;
 extern void (*__preinit_array_start []) (void) __attribute__((weak));
 extern void (*__preinit_array_end []) (void) __attribute__((weak));
@@ -282,16 +282,16 @@ void stopTimer3()
 */
 
 
-void initializeDMA()
+void initializeDMA(uint32_t* address, uint32_t count)
 {
 
 
 
 	RCC->AHBENR |= 0x00000001;//enable DMA clock
-	DMA->CMAR2 = (uint32_t)hwLedAdress;
+	DMA->CMAR2 = (uint32_t)hwLA;
 	DMA->CPAR2 = (uint32_t)&TIM3->CCR1;
 
-	DMA->CNDTR2 = WS_COUNT_BITS;
+	DMA->CNDTR2 = count;
 	//MINC - 				  0x00000080
 	//DIR(read from mem ) -  0x00000010
 	//PSIZE_0(16 bit) - 	  0x00000100
@@ -306,9 +306,9 @@ void initializeDMA()
 	DMA->CCR2 |= 0x00003000;
 	//DMA->CCR2 |= 0x00000001;//enable
 }
-void startWSDMA(void)
+void startWSDMA(uint32_t count)
 {
-	DMA->CNDTR2 = WS_COUNT_BITS;
+	DMA->CNDTR2 = count;
 	DMA->CCR2 |= 0x00003192;//DMA_CCR_MINC | DMA_CCR_DIR | DMA_CCR_EN | DMA_CCR_PSIZE_0|DMA_CCR_TCIE|DMA_CCR_PL_0|DMA_CCR_PL_1;
 	DMA->CCR2 |= 0x00000001;
 }
@@ -320,20 +320,20 @@ void stopWSDMA(void)
 //Постоянная передача на все диоды
 void startWSDMACircle()
 {
-	DMA->CNDTR2 = WS_COUNT_BITS;
+	//DMA->CNDTR2 = WS_COUNT_BITS;
 	DMA->CCR2 = 0x00003190;//DMA_CCR_MINC | DMA_CCR_DIR | DMA_CCR_EN | DMA_CCR_PSIZE_0|DMA_CCR_CIRC|DMA_CCR_PL_0|DMA_CCR_PL_1;
 	DMA->CCR2 |= 0x00000020;
 	DMA->CCR2 |= 0x00000001;
 }
 
 
-void startWsTransfer(void)
+void startWsTransfer(uint32_t count)
 {
 
-	if(flgWSTransfer)return;//Ждем когда закончится предыдущая передача
-	flgWSTransfer = 1;//Флаг начала передачи
+	//if(flgWSTransfer)return;//Ждем когда закончится предыдущая передача
+	//flgWSTransfer = 1;//Флаг начала передачи
 //	stopLightSensDMA();//Выкл. канал датчика освещения т.к. он прерывает канал WS
-	startWSDMA();
+	startWSDMA(count);
 	startTimer3();
 }
 void wsDmaTmCirc(void)

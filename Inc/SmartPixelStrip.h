@@ -11,46 +11,42 @@
 #include <stdint.h>
 
 
-
-
-
 class SmartPixelStrip {
 
 
 	SmartPixel* leds;
 	uint32_t pixelCount { 0 };
-	uint32_t resetTiming { 64 };
+	uint32_t resetBytes { 64 };
 	static constexpr uint8_t RGB_COUNT_COLORS { 3 };
 	static constexpr uint8_t RGBW_COUNT_COLORS { 4 };
-	uint8_t ledCountColors { RGB_COUNT_COLORS };//rgb
+    static constexpr uint8_t HW_BYTES_PER_COLOR { 8 };
+    uint8_t ledCountColors { RGB_COUNT_COLORS };//rgb
 
-
-	struct LedHwPack
-	{
-		//Значения цветов 24байта * WS_LED_COUNT
-		uint8_t* ledHwPix { nullptr };//[WS_LED_COUNT];
-		//Res
-		uint8_t* res { nullptr };
-	}packet;
+    uint8_t* packet;
 
 
 	void setPixelHwColorRed(uint32_t id, uint8_t color);
 	void setPixelHwColorGreen(uint32_t id, uint8_t color);
 	void setPixelHwColorBlue(uint32_t id, uint8_t color);
+	void (*startTransfer)(uint32_t) { nullptr };
 
-	uint32_t* getHwAdress(){ return (uint32_t*)&packet; } //return addres to hw array for DMA & timer
 public:
-
+    uint32_t* getHwAdress(){ return reinterpret_cast<uint32_t*>(packet); } //return addres to hw array for DMA & timer
 	enum PixelStripType : uint8_t { WS2812 = 0x00, SK6812RGBW = 0x01 } ledType { WS2812 };
-
-	SmartPixelStrip(uint32_t count, PixelStripType type);
+	enum PixelStripMode : uint8_t { ONCE_MODE = 0x00, CIRC_MODE = 0x01 } transferMode { CIRC_MODE };
+	SmartPixelStrip(uint32_t count, PixelStripType type, PixelStripMode mode, void(*transferFunction)(uint32_t));
 
 	void initializeWS2812Strip();
 
 	void initializeSK6812RGBWStrip();
 
-
-
+    SmartPixel* getLed(uint32_t id){ if(id<pixelCount) return &leds[id]; else return nullptr; }
+    void refresh();
+    uint32_t count(){ return pixelCount; }
+    uint8_t sizePerPixel(){ return ledCountColors * HW_BYTES_PER_COLOR; }
+    void setBright(uint8_t bright);
+    void setColor(uint16_t color);
+    uint32_t hwSize(){ return resetBytes + sizePerPixel() * pixelCount; }
 	virtual ~SmartPixelStrip();
 };
 

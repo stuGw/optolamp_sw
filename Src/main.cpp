@@ -27,6 +27,8 @@
 #include "init.h"
 #include "ws2812.h"
 #include "SmartPixelStrip.h"
+#include "ledeffects.h"
+#include "ledpairs.h"
 
 #if !defined(__SOFT_FP__) && defined(__ARM_FP)
   #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
@@ -98,7 +100,7 @@ void SysTick_Handler()
 	milliseconds++;
 	bLeft.timeIncrease();
 	bRight.timeIncrease();
-	if((milliseconds%200) == 0)
+	if((milliseconds%20) == 0)
 	{
 		flagButt = 1;
 	}
@@ -149,7 +151,7 @@ void initializeModules()
 int main(void)
 {
 
-	SmartPixelStrip* ledstrip = new SmartPixelStrip(32,SmartPixelStrip::WS2812, SmartPixelStrip::ONCE_MODE, startWsTransfer);
+	SmartPixelStrip* ledstrip = new SmartPixelStrip(8,SmartPixelStrip::WS2812, SmartPixelStrip::ONCE_MODE, startWsTransfer);
 	hwLA = ledstrip->getHwAdress();
 	initializeHw();
 	initializeModules();
@@ -189,10 +191,41 @@ int main(void)
 		ledstrip->getLed(4)->setBlue(255);
 		ledstrip->getLed(4)->setBright(21);
 
+
+
+		LedPairs pairs(ledstrip);
+
+		pairs.setPair(0,0, 2);
+		pairs.setPair(1,1, 4);
+		pairs.setPair(2,3, 6);
+		pairs.setPair(3,5,7);
+
+
+		pairs.getPair(0)->setBright(21);
+		pairs.getPair(0)->setColor(255,0,0);
+		pairs.getPair(0)->refresh();
+
+		pairs.getPair(1)->setBright(21);
+		pairs.getPair(1)->setColor(0,255,0);
+		pairs.getPair(1)->refresh();
+
+		pairs.getPair(2)->setBright(21);
+		pairs.getPair(2)->setColor(0,0,255);
+		pairs.getPair(2)->refresh();
+
+		pairs.getPair(3)->setBright(21);
+		pairs.getPair(3)->setColor(255,255,0);
+		pairs.getPair(3)->refresh();
+
 //	ledstrip->setBright(value);
 		ledstrip->refresh();
 
+		LedEffects ledEffect(ledstrip);
+		//LedEffects ledEffect(&pairs);
+		ledEffect.setSpeed(2500);
 
+		//ledEffect.setRainbowEachPairCoefficient(350);
+		ledEffect.setEffect(LedEffects::RUN_PIXELS_SOFT);
 
 	//	startWsTransfer();
 		LOG->DEBG("ALl ready!");
@@ -216,6 +249,7 @@ int main(void)
 			if(value!= lastBrightValue){  lastBrightValue = value; };
 
 			flagSecund = 0;
+			ledEffect.play();
 		}
 
 		if(flagButt)

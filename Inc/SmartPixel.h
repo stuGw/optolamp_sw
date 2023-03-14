@@ -18,6 +18,8 @@ class SmartPixel {
 	uint8_t green;
 	uint8_t blue;
 
+	uint16_t colorHD { 0 };
+
 public:
     static constexpr uint8_t HW_0 { 22 };
     static constexpr uint8_t HW_1  { 58 };
@@ -36,8 +38,16 @@ public:
 
 	void setColor(uint16_t color)
 	{
+		colorHD = color;
 		convertToCurrColorHD(color);
 	}
+	void setColor(uint8_t r, uint8_t g, uint8_t b)
+	{
+		red = r; green = g; blue = b;
+	}
+
+	uint16_t getColor(){ return colorHD; }
+	uint8_t getBright(){ return bright; }
 protected:
 	static constexpr uint16_t maxBrightValueInArr { 1000 };
 	static constexpr uint16_t rgbBright[ maxBrightIndex + 1 ] { 0, 9, 12, 14, 18, 22, 35, 44, 55, 68,
@@ -55,6 +65,7 @@ protected:
 	uint8_t  getHwColorValueRed();
 	uint8_t  getHwColorValueGreen();
 	uint8_t  getHwColorValueBlue();
+
 };
 
 

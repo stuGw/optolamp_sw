@@ -246,7 +246,7 @@ int main(void)
 			uint16_t value = WS_MAX_BRIGHT - (sensorValue/100);
 			if(value<1)value = 1;
 			if(value>WS_MAX_BRIGHT) value = WS_MAX_BRIGHT;
-			if(value!= lastBrightValue){  lastBrightValue = value; };
+			if(value!= lastBrightValue){  lastBrightValue = value; ledEffect.setEffectBright(value);};
 
 			flagSecund = 0;
 			ledEffect.play();
@@ -273,8 +273,9 @@ if(color>1500) color = 0;
 			LOG->DEBG("Right SINGLE");
 					ledBright++;
 					if(ledBright>=WS_MAX_BRIGHT) ledBright = 0;
-					ledstrip->setBright(ledBright);
-						ledstrip->refresh();
+					//ledstrip->setBright(ledBright);
+					//	ledstrip->refresh();
+					ledEffect.setEffectBright(ledBright);
 
 				}
 

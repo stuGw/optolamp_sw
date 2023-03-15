@@ -38,6 +38,7 @@ void LedEffects::play()
 			case Effects::RUN_PIXELS: { runPixels(); break; }
 			case Effects::RUN_PAIRS: { runPairs(); break; }
 			case Effects::RUN_PIXELS_SOFT: { runPixelsSoft(); break; }
+			case Effects::RUN_PAIRS_SOFT: { runPairsSoft(); break; }
 		}
 }
 
@@ -161,7 +162,13 @@ void LedEffects::runPixelsSoft()
 	static uint8_t brightCurrent = 0;
 	static uint8_t brightPrevious = effBright;
 	rnbwCntr++;
-	if(rnbwCntr>ledSpeed)
+
+	static uint8_t brightAllSaved = effBright;
+
+
+
+
+	if(rnbwCntr>(ledSpeed))
 	{
 
 		leds->getLed(currentLed)->setBright(brightCurrent);
@@ -170,16 +177,67 @@ void LedEffects::runPixelsSoft()
 		brightCurrent++;
 		brightPrevious--;
 
-		if(brightCurrent == effBright)
+		if(brightCurrent == brightAllSaved)
 		{
+
+			if(brightAllSaved!=effBright)
+					{
+						brightCurrent = 0;
+						brightPrevious = effBright;
+						brightAllSaved = effBright;
+					}
+
 			previousLed = currentLed;
 			if(currentLed<leds->count()-1) currentLed++; else currentLed = 0;
+			brightCurrent = 0;//brightPrevious;
+			brightPrevious = brightAllSaved;
+
+		}
+
+		leds->refresh();
+		rnbwCntr = 0;
+	}
+
+}
+
+void LedEffects::runPairsSoft()
+{
+	pairsOfLeds->setBright(0);
+	volatile static unsigned short int rnbwCntr = 0;
+	static uint32_t currentPair { 0 }, previousPair { pairsOfLeds->getCount()-1 };
+	static bool sign { true };
+	static uint8_t brightCurrent = 0;
+	static uint8_t brightPrevious = effBright;
+	static uint8_t brightAllSaved = effBright;
+
+
+	if(brightAllSaved!=effBright)
+	{
+		brightCurrent = 0;
+		brightPrevious = effBright;
+		brightAllSaved = effBright;
+	}
+	rnbwCntr++;
+
+	if(rnbwCntr>ledSpeed)
+	{
+
+		pairsOfLeds->getPair(currentPair)->setBright(brightCurrent);
+		pairsOfLeds->getPair(previousPair)->setBright(brightPrevious);
+
+		brightCurrent++;
+		brightPrevious--;
+
+		if(brightCurrent == effBright)
+		{
+			previousPair = currentPair;
+			if(currentPair<pairsOfLeds->getCount()-1) currentPair++; else currentPair = 0;
 			brightCurrent = brightPrevious;
 			brightPrevious = effBright;
 
 		}
 
-		leds->refresh();
+		pairsOfLeds->refresh();
 		rnbwCntr = 0;
 	}
 

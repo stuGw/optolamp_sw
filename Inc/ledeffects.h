@@ -61,7 +61,7 @@ public:
 	virtual ~LedEffects();
 
 	enum Effects : uint8_t { NO_EFFECT = 0x00, RAINBOW_ALL = 0x01, RAINBOW_EACH = 0x02, FIRE_ALL = 0x03, FIRE_EACH = 0x04, RAINBOW_PAIRS = 0x05, RAINBOW_EACH_PAIR = 0x06, RUN_PIXELS = 0x07, RUN_PAIRS = 0x08,
-	RUN_PIXELS_SOFT = 0x09} effect { NO_EFFECT };
+	RUN_PIXELS_SOFT = 0x09, RUN_PAIRS_SOFT = 0x0a} effect { NO_EFFECT };
 
 	void setEffect(Effects eff){ ledSpeed = 5; effect = eff; }
 	void setEffectBright(uint8_t bright){ effBright = bright; }
@@ -78,7 +78,7 @@ public:
 	void runPixelsSoft();
 
 	void runPairs();
-
+	void runPairsSoft();
 	void rainbowPairs();
 	void rainbowEachPair();
 };

@@ -42,6 +42,25 @@ void LedEffects::play()
 		}
 }
 
+void LedEffects::setEffect(Effects eff)
+{
+	switch (effect)
+		{
+			case Effects::NO_EFFECT: break;
+			case Effects::RAINBOW_ALL: {  pairsOfLeds->setBright(effBright); leds->setBright(effBright); break; }
+			case Effects::RAINBOW_EACH: { leds->setBright(effBright);  break; }
+			case Effects::FIRE_ALL: {  break; }
+			case Effects::FIRE_EACH: {  break; }
+			case Effects::RAINBOW_PAIRS: { pairsOfLeds->setBright(effBright); break; }
+			case Effects::RAINBOW_EACH_PAIR: { pairsOfLeds->setBright(effBright); break; }
+			case Effects::RUN_PIXELS: {  break; }
+			case Effects::RUN_PAIRS: {  break; }
+			case Effects::RUN_PIXELS_SOFT: {  break; }
+			case Effects::RUN_PAIRS_SOFT: {  break; }
+		}
+	ledSpeed = 5; effect = eff;
+}
+
 void LedEffects::rainbowAll()
 {
 		static unsigned short int rnbwCntr = 0;

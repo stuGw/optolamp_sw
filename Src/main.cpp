@@ -108,10 +108,10 @@ void SysTick_Handler()
 
 void EXTI0_Handler()
 {
-	if(EXTI->RPR1 & 0x0001){ EXTI->RPR1 |= 0x0001; bLeft.rise();  /*LOG->DEBG("BUP rise");*/ }
-	if(EXTI->RPR1 & 0x0002){ EXTI->RPR1 |= 0x0002; bRight.rise();  /*LOG->DEBG("BDN rise");*/ }
-	if(EXTI->FPR1 & 0x0001){ EXTI->FPR1 |= 0x0001; bLeft.fall();  /*LOG->DEBG("BUP fall");*/ }
-	if(EXTI->FPR1 & 0x0002){ EXTI->FPR1 |= 0x0002; bRight.fall();  /*LOG->DEBG("BDN fall");*/ }
+	if(EXTI->RPR1 & 0x0002){ EXTI->RPR1 |= 0x0002; bLeft.rise();  /*LOG->DEBG("BEFFECT rise",bLeft.buttonTime);*/ }
+	if(EXTI->RPR1 & 0x0001){ EXTI->RPR1 |= 0x0001; bRight.rise(); /*LOG->DEBG("BBRIGHT rise",bRight.buttonTime);*/ }
+	if(EXTI->FPR1 & 0x0002){ EXTI->FPR1 |= 0x0002; bLeft.fall();  /*LOG->DEBG("BEFFECT fall");*/ }
+	if(EXTI->FPR1 & 0x0001){ EXTI->FPR1 |= 0x0001; bRight.fall();  /*LOG->DEBG("BBRIGHT fall");*/ }
 }
 
 
@@ -144,8 +144,8 @@ void initializeModules()
 
 		lightSensor.getDataFiltered(AnalogConverter::ADC_7);
 		LOG->DEBG("Initialize button interface...");
-		bLeft.init(&(GPIOA->IDR), GPIOPIN_0, 700, 530);
-		bRight.init(&(GPIOA->IDR), GPIOPIN_1, 700, 530);
+		bLeft.init(&(GPIOA->IDR), GPIOPIN_1, 1000, 300);
+		bRight.init(&(GPIOA->IDR), GPIOPIN_0, 1000, 300);
 }
 
 
@@ -158,18 +158,24 @@ struct CONFIG
 	bool autoBright { true };
 	uint16_t colorValue { 0 };
 	uint8_t currentEffect { 0 };
+	bool effectMode { false };
 };
 
-void getConfiguration(CONFIG* conf, uint8_t bR, uint8_t bL)
+bool getConfiguration(CONFIG* conf, uint8_t bR, uint8_t bL)
 {
+	bool changed = false;
 	if(bR == Button::DOUBLE)
 	{
 		conf->autoBright = !conf->autoBright;
+		if(conf->autoBright) LOG->DEBG("Autobright on!"); else LOG->DEBG("Autobright off");
+		changed = true;
 	}
 
 	if(bL == Button::DOUBLE)
 	{
-		if(conf->currentEffect) conf->currentEffect = 0; else conf->currentEffect = 1;
+		conf->effectMode = !conf->effectMode;
+		if(conf->effectMode) LOG->DEBG("Effect mode on!"); else LOG->DEBG("Effect mode off");
+		changed = true;
 	}
 
 	if(bR == Button::SINGLE)
@@ -179,12 +185,13 @@ void getConfiguration(CONFIG* conf, uint8_t bR, uint8_t bL)
 			conf->bright+=2;
 			if(conf->bright > 21) conf->bright = 1;
 			conf->brightChanged = true;
+			changed = true;
 		}
 	}
 
 	if(bL == Button::SINGLE)
 	{
-		if(conf->currentEffect)
+		if(conf->effectMode)
 		{
 			conf->currentEffect++;
 			if(conf->currentEffect>10)conf->currentEffect = 1;
@@ -196,8 +203,9 @@ void getConfiguration(CONFIG* conf, uint8_t bR, uint8_t bL)
 			if(conf->colorValue>1530)conf->colorValue = 0;
 			conf->colorChanged = true;
 		}
-
+		changed = true;
 	}
+	return changed;
 }
 
 int main(void)
@@ -324,8 +332,8 @@ int main(void)
 		static uint16_t ledColor { 0 };
 		static uint8_t ledBright { 1 };
 		static uint16_t sensorValue { 0 };
-		static uint16_t autoBrightValue { 0 };
-		static uint16_t lastAutoBrightValue { 0 };
+		static int16_t autoBrightValue { 0 };
+		static int16_t lastAutoBrightValue { 0 };
 		bool lightChanged { false };
 		uint8_t buttonLeftState { 0 };
 		uint8_t buttonRightState { 0 };
@@ -334,97 +342,85 @@ int main(void)
 		{
 
 			sensorValue = lightSensor.getDataFiltered(AnalogConverter::ADC_7);
-		//	LOG->DEBG("Light = ", sensorValue);
+			//LOG->DEBG("Light = ", sensorValue);
 			autoBrightValue = WS_MAX_BRIGHT - (sensorValue/100);
 			if(autoBrightValue<1)autoBrightValue = 1;
 			if(autoBrightValue>WS_MAX_BRIGHT) autoBrightValue = WS_MAX_BRIGHT;
 			if(autoBrightValue!= lastAutoBrightValue){  lastAutoBrightValue = autoBrightValue; lightChanged = true; };
 
 			flagSecund = 0;
-			if(lampConfiguration.currentEffect)ledEffect.play();
-			else
-			{
-				ledstrip->setColor(lampConfiguration.colorValue);
-			}
-		}
-
-		if(flagButt)
-		{
-			buttonLeftState = bLeft.getState();
-			buttonRightState = bRight.getState();
+			if(lampConfiguration.effectMode)ledEffect.play();
+		//	else
+		//	{
+		//		ledstrip->setColor(lampConfiguration.colorValue);
+		//	}
 			flagButt = 0;
 		}
 
+		//if(flagButt)
+	//	{
+			buttonRightState = bRight.getState();
+			buttonLeftState = bLeft.getState();
+
+	//		flagButt = 0;
+	//	}
 
 
-
-
-
-
-
-
-		if(buttonLeftState == Button::DOUBLE)
+		if(lampConfiguration.autoBright && lightChanged)
 		{
-		//	LOG->DEBG("Left DOUBLE");
-		//	static uint16_t color { 0 };
-	//		color +=50;
-		//	if(color>1500) color = 0;
-	//		ledstrip->setColor(color);
-	//		ledstrip->refresh();
-
+			LOG->DEBG("AutoBright = ", autoBrightValue);
+			LOG->DEBG("SensorValue = ", sensorValue);
+			if(lampConfiguration.effectMode)ledEffect.setEffectBright(autoBrightValue);
+			else
+			{
+				ledstrip->setBright(autoBrightValue);
+				ledstrip->refresh();
+			}
+			lightChanged = false;
 		}
 
-		if(buttonLeftState == Button::SINGLE)
+		if(getConfiguration(&lampConfiguration,buttonRightState, buttonLeftState))
+		{
+
+			//Bright
+			if(lampConfiguration.autoBright)
+			{
+			/*	if(lightChanged)
 				{
-		//			static uint8_t effectno { 1 };
-		//			effectno++;
-	//				if(effectno>0x0a)effectno = 1;
-//
-		//			ledEffect.setEffect((LedEffects::Effects)effectno);
-		//			LOG->DEBG("Effect - ", effectno);
-
-				}
-		if(buttonRightState == Button::SINGLE)
-				{
-		//	LOG->DEBG("Right SINGLE");
-		//			ledBright++;
-		//			if(ledBright>=WS_MAX_BRIGHT) ledBright = 0;
-		//			//ledstrip->setBright(ledBright);
-					//	ledstrip->refresh();
-		//			ledEffect.setEffectBright(ledBright);
-
-				}
-
+					LOG->DEBG("AutoBright = ", autoBrightValue);
+					LOG->DEBG("SensorValue = ", sensorValue);
+					if(lampConfiguration.effectMode)ledEffect.setEffectBright(autoBrightValue);
+					else
+					{
+						ledstrip->setBright(autoBrightValue);
+						ledstrip->refresh();
+					}
+					lightChanged = false;
+				}*/
+			}
+			else if(lampConfiguration.brightChanged)
+			{
+				if(lampConfiguration.effectMode)ledEffect.setEffectBright(lampConfiguration.bright); else { ledstrip->setBright(lampConfiguration.bright); ledstrip->refresh(); };
+				lampConfiguration.brightChanged = false;
+				LOG->DEBG("Bright changed! - ", lampConfiguration.bright);
+			}
 
 
-		getConfiguration(&lampConfiguration,buttonRightState, buttonLeftState);
+			//color/effect
+			if(lampConfiguration.colorChanged)
+			{
+				ledstrip->setColor(lampConfiguration.colorValue);
+				ledstrip->refresh();
+				lampConfiguration.colorChanged = false;
+				LOG->DEBG("Color changed! - ", lampConfiguration.colorValue);
+			}
 
-		//Bright
-		if(lampConfiguration.autoBright)
-		{
-			if(lightChanged){ if(lampConfiguration.currentEffect)ledEffect.setEffectBright(autoBrightValue); else { ledstrip->setBright(autoBrightValue); ledstrip->refresh(); }; lightChanged = false; }
-		}
-		else if(lampConfiguration.brightChanged)
-		{
-			if(lampConfiguration.currentEffect)ledEffect.setEffectBright(lampConfiguration.bright); else { ledstrip->setBright(lampConfiguration.bright); ledstrip->refresh(); };
-			lampConfiguration.brightChanged = false;
-			LOG->DEBG("Bright changed! - ", lampConfiguration.bright);
-		}
-
-		//color/effect
-		if(lampConfiguration.colorChanged)
-		{
-			ledstrip->setColor(lampConfiguration.colorValue);
-			ledstrip->refresh();
-			lampConfiguration.colorChanged = false;
-			LOG->DEBG("Color changed! - ", lampConfiguration.colorValue);
-		}
-
-		if(lampConfiguration.effectChanged)
-		{
-			ledEffect.setEffect((LedEffects::Effects)lampConfiguration.currentEffect);
-			lampConfiguration.effectChanged = false;
-			LOG->DEBG("Effect changed! - ", lampConfiguration.currentEffect);
+			if(lampConfiguration.effectChanged)
+			{
+				ledEffect.setEffect((LedEffects::Effects)lampConfiguration.currentEffect);
+				lampConfiguration.effectChanged = false;
+				LOG->DEBG("Effect changed! - ", lampConfiguration.currentEffect);
+			}
 		}
 	}
 }

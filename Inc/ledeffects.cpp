@@ -70,6 +70,7 @@ void LedEffects::rainbowAll()
 		if(rnbwCntr>ledSpeed)
 		{
 			leds->setColor(color);
+			leds->setBright(effBright);
 	     	color++;
 			if(color>=maxColor)color = 0;
 			rnbwCntr = 0;
@@ -111,12 +112,14 @@ void LedEffects::fireAll()
 {
 	static unsigned short int fireCntr = 0;
 		static unsigned short int i = 0;
+		uint8_t bright { 0 };
+		if(effBright>8) bright = 8; else bright = effBright;
 		if(fireCntr>=ledSpeed)
 		{
 
 			for(int j = 0; j< leds->count(); j++)
 			{
-				leds->getLed(j)->setBright(ledFArrBBr[effBright][i]);
+				leds->getLed(j)->setBright(ledFArrBBr[bright][i]);
 				leds->getLed(j)->setColor(0xff,0x36,0x05);
 			}
 
@@ -135,13 +138,14 @@ void LedEffects::fireEach()
 	static unsigned short int fireCntr = 0;
 	static  uint8_t coefs[32] = { 0, 12, 7, 9, 34, 22, 45, 10, 17, 3, 55, 1, 27, 11, 5, 44, 19,
 			31, 35, 13, 24, 6, 18, 4, 49, 33, 30, 20, 40, 50, 29, 8};
-
+	uint8_t bright { 0 };
+			if(effBright>8) bright = 8; else bright = effBright;
 	if(fireCntr>=ledSpeed)
 	{
 
 		for(int j = 0; j< leds->count(); j++)
 		{
-			leds->getLed(j)->setBright(ledFArrBBr[effBright][coefs[j]]);
+			leds->getLed(j)->setBright(ledFArrBBr[bright][coefs[j]]);
 			leds->getLed(j)->setColor(0xff-ledFArrC[coefs[j]],0x22,0x03-ledFArrC[coefs[j]]/10);
 			coefs[j]++;
 			if(coefs[j]>=FR_CF_LED_CNT) coefs[j] = 0;
@@ -164,7 +168,7 @@ void LedEffects::runPixels()
 	if(rnbwCntr>ledSpeed)
 	{
 		leds->getLed(previousLed)->setBright(0);
-		leds->getLed(currentLed)->setBright(21);
+		leds->getLed(currentLed)->setBright(effBright);
 		leds->refresh();
 		previousLed = currentLed;
 		if(currentLed<leds->count()-1) currentLed++; else currentLed = 0;

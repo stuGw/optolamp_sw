@@ -6,7 +6,7 @@
  */
 
 #include <button.h>
-
+#include "logger.h"
 Button::Button() {
 	// TODO Auto-generated constructor stub
 
@@ -19,6 +19,7 @@ Button::~Button() {
 void Button::reset()
 {
 	buttonTime = 0;
+	buttonStateDelay = 0;
 	countFall = 0;
 	countRise = 0;
 	state = FREE;
@@ -26,16 +27,74 @@ void Button::reset()
 
 void Button::timeIncrease()
 {
-	if((state == DOUBLE) || (state == LONG) || (state == FREE)) return;
+	allCounter++;
+	if((state ==  FREE) || (state ==  LONG) || (state ==  SINGLE) || (state ==  DOUBLE)) return;
 
-	buttonTime++;
-	if(buttonTime>delay)
+	switch(state)
 	{
-		if((countFall == 1) && (countRise == 1))state = SINGLE;
-		else if(countFall == 1) state = LONG;
-		else if(countFall > 1) state = DOUBLE;
+	case WAIT_FALL_ACK:
+	{
+		buttonStateDelay++;
+		if(buttonStateDelay>30)//wait timeout
+		{
+			if(!(*ioPort&ioMask))//check if button in low
+			{
+				countFall++;
+				if((countFall == 2)&&(countRise)) state = DOUBLE;
+				else
+					state = FALLING;
+				//fallTime = allCounter;
+				//LOG->DEBG("set FALLED ", fallTime);
+				//if(countRise)LOG->DEBG("diff = ", riseTime - fallTime);
+			} else reset();
+			buttonStateDelay = 0;
+		}
+		break;
 	}
 
+	case WAIT_RISE_ACK:
+	{
+		buttonStateDelay++;
+		if(buttonStateDelay>30)//wait timeout
+		{
+			if((*ioPort&ioMask))//check if button in low
+			{
+				countRise++;
+				state = RISING;
+				//riseTime = allCounter;
+				//LOG->DEBG("set RAISED ", riseTime);
+				//if(countFall)LOG->DEBG("diff = ", fallTime - riseTime);
+			} else reset();
+			buttonStateDelay = 0;
+		}
+		break;
+	}
+
+	case RISING:
+	{
+		waitDouble++;
+		if(waitDouble>doublePressDelay)
+		{
+			state = SINGLE;
+			waitDouble = 0;
+		}
+		break;
+	}
+
+	case FALLING:
+	{
+		buttonTime++;
+		if(buttonTime>longTime)
+		{
+			if(!(*ioPort&ioMask))
+			{
+				state = LONG;
+			}
+		}
+		break;
+	}
+	default: break;
+	}
 }
 
 void Button::fall()
@@ -43,34 +102,30 @@ void Button::fall()
 	if(state>RISING)return;
 	if(!(*ioPort&ioMask))
 	{
-		state = FALLING;
-		countFall++;
-		if((countFall == 2)&&(countRise)) state = DOUBLE;
-	}
-}
-void Button::rise()
-{
-	if(state == FREE)return;
-	if(state>RISING)return;
-	if(*ioPort&ioMask)
-	{
-		state = RISING;
-		countRise++;
-		if((countRise == 1)&&(buttonTime > longTime)) state = LONG;
+		waitDouble = 0;
+		state = WAIT_FALL_ACK;
 	}
 }
 
-void Button::init(volatile uint32_t* port, uint32_t mask, uint16_t longPressTime, uint16_t lifeTime)
+void Button::rise()
+{
+	if( (*ioPort & ioMask) && (state == FALLING))
+	{
+		state = WAIT_RISE_ACK;
+	}
+}
+
+void Button::init(volatile uint32_t* port, uint32_t mask, uint16_t longPressTime, uint16_t delay)
 {
 	ioPort = port;
 	ioMask = mask;
-	delay = lifeTime;
 	longTime = longPressTime;
+	buttonStateDelay = delay;
 }
 
-uint8_t Button::getState()
+Button::State Button::getState()
 {
-	uint8_t lst { 0 };
+	Button::State lst { Button::FREE };
 	if(state >= SINGLE)
 	{
 		lst = state;

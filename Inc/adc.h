@@ -2,6 +2,8 @@
 #ifndef ADC_H
 #define ADC_H
 
+#include <stdint.h>
+
 struct ADCChannel
 {
 	uint32_t channelID { 0xffffffff };

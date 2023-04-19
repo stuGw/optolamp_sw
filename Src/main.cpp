@@ -29,6 +29,9 @@
 #include "SmartPixelStrip.h"
 #include "ledeffects.h"
 #include "ledpairs.h"
+#include "resistanceconverter.h"
+#include "lightsensor5528.h"
+#include "memory24xx.h"
 
 #if !defined(__SOFT_FP__) && defined(__ARM_FP)
   #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
@@ -40,7 +43,7 @@
 Button bLeft;
 Button bRight;
 uint32_t* hwLA;
-AnalogConverter lightSensor;
+AnalogConverter sensorADC;
 Serial serial;//serial, using in logger &
 Led *led;//just led
 RTCTime time;//using to configure and read realtime
@@ -108,10 +111,10 @@ void SysTick_Handler()
 
 void EXTI0_Handler()
 {
-	if(EXTI->RPR1 & 0x0002){ EXTI->RPR1 |= 0x0002; bLeft.rise();  /*LOG->DEBG("BEFFECT rise",bLeft.buttonTime);*/ }
-	if(EXTI->RPR1 & 0x0001){ EXTI->RPR1 |= 0x0001; bRight.rise(); /*LOG->DEBG("BBRIGHT rise",bRight.buttonTime);*/ }
-	if(EXTI->FPR1 & 0x0002){ EXTI->FPR1 |= 0x0002; bLeft.fall();  /*LOG->DEBG("BEFFECT fall");*/ }
-	if(EXTI->FPR1 & 0x0001){ EXTI->FPR1 |= 0x0001; bRight.fall();  /*LOG->DEBG("BBRIGHT fall");*/ }
+	if(EXTI->RPR1 & 0x0002){ EXTI->RPR1 |= 0x0002; bLeft.rise();  /*LOG->DEBG("BEFFECT rise",bLeft.allCounter);*/ }
+	if(EXTI->RPR1 & 0x0001){ EXTI->RPR1 |= 0x0001; bRight.rise();/* LOG->DEBG("BBRIGHT rise",bRight.allCounter);*/ }
+	if(EXTI->FPR1 & 0x0002){ EXTI->FPR1 |= 0x0002; bLeft.fall();  /*LOG->DEBG("BEFFECT fall", bLeft.allCounter);*/ }
+	if(EXTI->FPR1 & 0x0001){ EXTI->FPR1 |= 0x0001; bRight.fall();  /*LOG->DEBG("BBRIGHT fall", bRight.allCounter);*/ }
 }
 
 
@@ -138,14 +141,14 @@ void initializeModules()
 		LOG->DEBG("Logger is on!");
 
 		LOG->DEBG("Initialize adc...");
-		lightSensor.init();
+		sensorADC.init();
 		//PA7 - ADC7 - current, PB0 - ADC_8 - 60v voltage, PA6 - ADC6 - 12v voltage
-		lightSensor.initChannels(AnalogConverter::ADC_7);
+		sensorADC.initChannels(AnalogConverter::ADC_7);
 
-		lightSensor.getDataFiltered(AnalogConverter::ADC_7);
+		sensorADC.getDataFiltered(AnalogConverter::ADC_7);
 		LOG->DEBG("Initialize button interface...");
-		bLeft.init(&(GPIOA->IDR), GPIOPIN_1, 1000, 300);
-		bRight.init(&(GPIOA->IDR), GPIOPIN_0, 1000, 300);
+		bLeft.init(&(GPIOA->IDR), GPIOPIN_1);
+		bRight.init(&(GPIOA->IDR), GPIOPIN_0);
 }
 
 
@@ -161,24 +164,26 @@ struct CONFIG
 	bool effectMode { false };
 };
 
-bool getConfiguration(CONFIG* conf, uint8_t bR, uint8_t bL)
+bool getConfiguration(CONFIG* conf, Button *buttonR, Button *buttonL)
 {
 	bool changed = false;
-	if(bR == Button::DOUBLE)
+	Button::State bRState = buttonR->getState();
+	Button::State bLState = buttonL->getState();
+	if(bRState == Button::DOUBLE)
 	{
 		conf->autoBright = !conf->autoBright;
 		if(conf->autoBright) LOG->DEBG("Autobright on!"); else LOG->DEBG("Autobright off");
 		changed = true;
 	}
 
-	if(bL == Button::DOUBLE)
+	if(bLState == Button::DOUBLE)
 	{
 		conf->effectMode = !conf->effectMode;
 		if(conf->effectMode) LOG->DEBG("Effect mode on!"); else LOG->DEBG("Effect mode off");
 		changed = true;
 	}
 
-	if(bR == Button::SINGLE)
+	if(bRState == Button::SINGLE)
 	{
 		if(!conf->autoBright)
 		{
@@ -189,7 +194,7 @@ bool getConfiguration(CONFIG* conf, uint8_t bR, uint8_t bL)
 		}
 	}
 
-	if(bL == Button::SINGLE)
+	if(bLState == Button::SINGLE)
 	{
 		if(conf->effectMode)
 		{
@@ -205,14 +210,27 @@ bool getConfiguration(CONFIG* conf, uint8_t bR, uint8_t bL)
 		}
 		changed = true;
 	}
-	return changed;
+	return changed || conf->brightChanged;
+}
+
+void configureLamp()
+{
+
 }
 
 int main(void)
 {
+	Memory24xx mem;
 
+	mem.setInterfaceRead(readI2C1);
+	mem.setInterfaceWrite(writeI2C1);
+	mem.setMemoryParams(4096, 0xA0);
+
+	//mem.writeArray(00, 0, 16);
+	//mem.readArray(00, 16, 00);
+	LightSensor5528 lightSensor(1000000, &sensorADC, AnalogConverter::ADC_7);
 	CONFIG lampConfiguration;
-
+	ResistanceConverter RConverter;
 	SmartPixelStrip* ledstrip = new SmartPixelStrip(32,SmartPixelStrip::WS2812, SmartPixelStrip::ONCE_MODE, startWsTransfer);
 	hwLA = ledstrip->getHwAdress();
 	initializeHw();
@@ -334,71 +352,44 @@ int main(void)
 		static uint16_t sensorValue { 0 };
 		static int16_t autoBrightValue { 0 };
 		static int16_t lastAutoBrightValue { 0 };
-		bool lightChanged { false };
+		bool lightChanged { true };
 		uint8_t buttonLeftState { 0 };
 		uint8_t buttonRightState { 0 };
+
+
+		lampConfiguration.brightChanged = false;
 
 		if(flagButt)
 		{
 
-			sensorValue = lightSensor.getDataFiltered(AnalogConverter::ADC_7);
-			//LOG->DEBG("Light = ", sensorValue);
-			autoBrightValue = WS_MAX_BRIGHT - (sensorValue/100);
-			if(autoBrightValue<1)autoBrightValue = 1;
-			if(autoBrightValue>WS_MAX_BRIGHT) autoBrightValue = WS_MAX_BRIGHT;
-			if(autoBrightValue!= lastAutoBrightValue){  lastAutoBrightValue = autoBrightValue; lightChanged = true; };
+			autoBrightValue = lightSensor.getValue();//WS_MAX_BRIGHT - (sensorValue/100);
+
+			if(autoBrightValue<1)
+			{
+				lightChanged = false;
+			}
+			else
+			{
+				if(lampConfiguration.autoBright)
+				{
+					lampConfiguration.bright = autoBrightValue;
+					lampConfiguration.brightChanged = true;
+				}
+
+				LOG->DEBG("AUTOBRIGHT = ", autoBrightValue);
+			}
 
 			flagSecund = 0;
+
 			if(lampConfiguration.effectMode)ledEffect.play();
-		//	else
-		//	{
-		//		ledstrip->setColor(lampConfiguration.colorValue);
-		//	}
+
 			flagButt = 0;
 		}
 
-		//if(flagButt)
-	//	{
-			buttonRightState = bRight.getState();
-			buttonLeftState = bLeft.getState();
-
-	//		flagButt = 0;
-	//	}
-
-
-		if(lampConfiguration.autoBright && lightChanged)
-		{
-			LOG->DEBG("AutoBright = ", autoBrightValue);
-			LOG->DEBG("SensorValue = ", sensorValue);
-			if(lampConfiguration.effectMode)ledEffect.setEffectBright(autoBrightValue);
-			else
-			{
-				ledstrip->setBright(autoBrightValue);
-				ledstrip->refresh();
-			}
-			lightChanged = false;
-		}
-
-		if(getConfiguration(&lampConfiguration,buttonRightState, buttonLeftState))
+		if(getConfiguration(&lampConfiguration,&bRight, &bLeft))
 		{
 
-			//Bright
-			if(lampConfiguration.autoBright)
-			{
-			/*	if(lightChanged)
-				{
-					LOG->DEBG("AutoBright = ", autoBrightValue);
-					LOG->DEBG("SensorValue = ", sensorValue);
-					if(lampConfiguration.effectMode)ledEffect.setEffectBright(autoBrightValue);
-					else
-					{
-						ledstrip->setBright(autoBrightValue);
-						ledstrip->refresh();
-					}
-					lightChanged = false;
-				}*/
-			}
-			else if(lampConfiguration.brightChanged)
+			if(lampConfiguration.brightChanged)
 			{
 				if(lampConfiguration.effectMode)ledEffect.setEffectBright(lampConfiguration.bright); else { ledstrip->setBright(lampConfiguration.bright); ledstrip->refresh(); };
 				lampConfiguration.brightChanged = false;

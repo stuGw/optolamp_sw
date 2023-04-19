@@ -192,10 +192,180 @@ void initLedPin()
 	GPIOB->MODER |= 0x00000004;//0x01405555; //set MODE11[0] & MODE12[0] MODE4[0] MODE5[0] MODE6[0] MODE7[0]
 }
 
+
+
+void initI2C1GPIO()
+{
+	//debug
+	//output opendrain
+	//RCC->IOPENR |= (1<<1);//enable port B
+	//af opendrain
+	//GPIOB->MODER |= 0x000a0000;//PB8 & PB9 set MODE1
+	//GPIOB->MODER &= ~0x00050000;//PB8 & PB9 reset MODE0
+	//GPIOB->OTYPER |= 0x00000300;
+	//GPIOB->OSPEEDR |= 0x000f0000; //maxspeed
+	//GPIOB->AFRH |= 0x00000066; //af6 to b8 b9
+
+	//work
+	//output opendrain
+	RCC->IOPENR |= (1<<1);//enable port B
+	//af opendrain
+	GPIOB->MODER |= 0x0000a000;//PB6& PB7 set MODE1
+	GPIOB->MODER &= ~0x00005000;//PB6 & PB7 reset MODE0
+	GPIOB->OTYPER |= 0x000000c0;
+	GPIOB->OSPEEDR |= 0x0000f000; //maxspeed
+	GPIOB->AFRL |= 0x66000000; //af6 to b7 b6
+}
+
+void initMemWPPin()
+{
+	RCC->IOPENR |= (1 << 0); // enable Port A
+	GPIOA->MODER &= ~0x00000200;//~0x0280aaaa;//reset MODE11[1] & MODE12[1] MODE4[1] MODE5[1] MODE6[1] MODE7[1]
+	GPIOA->MODER |= 0x00000100;//0x01405555; //set MODE11[0] & MODE12[0] MODE4[0] MODE5[0] MODE6[0] MODE7[0]
+	GPIOA->ODR &= ~0x00000010;
+	//GPIOA->ODR |= 0x00000010;
+}
+
+void offI2C1()
+{
+	I2C1->CR1 &= ~0x00000001;
+	while((I2C1->CR1 & 0x00000001)!=0);
+}
+
+void initI2C1()
+{
+	initI2C1GPIO();
+	RCC->APBENR1 |= 0x00200000;//en 12c1 clocking
+	offI2C1();
+	I2C1->TIMINGR |= 0x50330309;//TIMINGR conf example 400kHz 48Mhz rm738
+	I2C1->CR1 |= 0x00000001;//enable
+}
+
+void writeI2C1(uint8_t addrMode, uint16_t deviceAddress, uint16_t memAddress, uint8_t count, uint8_t* data, bool twoByteAddress)
+{
+	uint16_t tmp = count + 1;//+ address byte
+
+	if(twoByteAddress) tmp = count + 2;
+
+	I2C1->CR2 |= ((addrMode&0x1)<<11);///ADD10 set address mode 0 - 7bit, 1 - 10bit
+
+	I2C1->CR2 &= ~0x00000500; //RD/WRN = 0 - write
+	I2C1->CR2 &= ~0x00ff0000; //clear num bytes
+	I2C1->CR2 |= tmp<<16;
+
+	I2C1->CR2 |= 0x02000000;//AUTOEND = 1; STOP after transfer
+
+	I2C1->CR2 |= deviceAddress; // set slave address
+
+	I2C1->CR2 |= 0x00002000; //start
+
+	volatile uint32_t waitTimer = 0;
+	int countToSend = 0;
+	//write address byte
+	if(twoByteAddress)
+	{
+		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return; }//wait until txis setted to 1
+		I2C1->TXDR = (memAddress>>8)&0xff;//data[countToSend];//High byte of address
+
+		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return; }//wait until txis setted to 1
+		I2C1->TXDR = memAddress&0xff;//data[countToSend];
+	}
+	else
+	{
+		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return; }//wait until txis setted to 1
+		I2C1->TXDR = memAddress&0xff;//data[countToSend];
+	}
+	//transmit while num bytes != 0;
+	while(countToSend<count)
+	{
+		waitTimer = 0;
+		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return; }; //wait until txis setted to 1
+		I2C1->TXDR = data[countToSend];
+		countToSend++;
+	}
+
+}
+//read count bytes from device(deviceAddress) position addrFom
+void readI2C1(uint8_t addrMode, uint16_t deviceAddress, uint16_t addrFrom, uint8_t count, uint8_t* data, bool twoByteAddress)
+{
+	//write address of memory to be readed
+	uint16_t tmp = 1;
+
+	if(twoByteAddress) tmp = 2;
+
+	//i2cStatusFlag = 1;
+	I2C1->CR2 |= ((addrMode&0x1)<<11);///ADD10 set address mode 0 - 7bit, 1 - 10bit
+
+	I2C1->CR2 &= ~0x00000500; //RD/WRN = 0 - write
+	I2C1->CR2 &= ~0x00ff0000;//clear num bytes
+	I2C1->CR2 |= tmp<<16;//set actual num bytes
+
+	I2C1->CR2 &= ~0x02000000;//AUTOEND = 1; STOP after transfer
+
+	I2C1->CR2 |= deviceAddress&0xff; // set slave address
+
+	I2C1->CR2 |= 0x00002000; //start
+
+	//i2cStatusFlag = 0;
+
+	int countToRecieve = 0;
+	volatile uint32_t waitTimer = 0;
+
+	if(twoByteAddress)
+	{
+		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return; }; //wait until txis setted to 1
+		I2C1->TXDR = (addrFrom>>8)&0xff;//data[countToSend];//High byte of address
+
+		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return; }; //wait until txis setted to 1
+		I2C1->TXDR = (addrFrom)&0xff;//data[countToSend];//Low Byte of address
+
+	}
+	else
+	{
+		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return; }; //wait until txis setted to 1
+		I2C1->TXDR = addrFrom & 0xff;//data[countToSend];
+	}
+	waitTimer = 0;
+
+
+
+	while((I2C1->ISR & 0x00000040) == 0){ waitTimer++; if(waitTimer>10000) return; }; //wait until tc setted to 1
+
+	//i2cStatusFlag = 0;
+	tmp = count;
+	//read data, set devaddress and read mode
+	I2C1->CR2 |= 0x00000500; //RD/WRN = 1 - read
+	I2C1->CR2 &= ~0x00ff0000;//clear num bytes
+	I2C1->CR2 |= tmp<<16;//set actual num bytes
+
+	I2C1->CR2 |= deviceAddress&0xff; // set slave address
+
+	//I2C1->CR2 |= 0x02000000;//AUTOEND = 1; STOP after transfer
+
+	I2C1->CR2 |= 0x00002000; //start
+
+	//i2cStatusFlag = 0;
+	while(countToRecieve<count)
+	{
+		waitTimer = 0;
+		while((I2C1->ISR & 0x00000004) == 0){ waitTimer++; if(waitTimer>10000) return; };
+		data[countToRecieve] = I2C1->RXDR;
+		countToRecieve++;
+	}
+
+	if(I2C1->ISR & 0x00000040){I2C1->CR2 |= 0x00004000;  I2C1->ICR |= 0x00000020;return;}
+	waitTimer = 0;
+	while((I2C1->ISR & 0x00000040) == 0) { waitTimer++; if(waitTimer>10000) return; }; //wait until tc setted to 1
+	//	}
+	//}
+}
+
 void initializeHw()
 {
 	initSysTick();
 	initLedPin();
+	initI2C1();
+	initMemWPPin();
 	initEXTIPins();
 }
 

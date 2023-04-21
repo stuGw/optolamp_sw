@@ -109,7 +109,27 @@ void Logger::DEBG(const char *String, int number, int number2)
 	printsfi(String,number,number2);
 	sout->eputc('\n');
 }
+void Logger::printsh(const char *String, int number)
+{
+    while(*String) // keep going until a null is encountered
+    {
+    	sout->eputc(*String); // write out the next character
+        String++;       // move the pointer along
+    }
 
+    char buffer[12]; // ints can be +/- 2 billion (approx) so buffer needs to be this big
+    buffer[11]=0;    // ensure the buffer is terminated with a null
+    itoa(number,buffer,16);
+    prints(buffer);
+    //print(Buffer); // call string version of print
+}
+void Logger::DEBGH(const char *String, int number)
+{
+	if(timeOn) printTime();
+	prints("[DBG]");
+	printsh(String,number);
+	sout->eputc('\n');
+}
 static double PRECISION = 0.001;
 static int MAX_NUMBER_STRING_SIZE = 32;
 

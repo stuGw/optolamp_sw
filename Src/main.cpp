@@ -32,6 +32,7 @@
 #include "resistanceconverter.h"
 #include "lightsensor5528.h"
 #include "memory24xx.h"
+#include "crchw.h"
 
 #if !defined(__SOFT_FP__) && defined(__ARM_FP)
   #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
@@ -47,7 +48,7 @@ AnalogConverter sensorADC;
 Serial serial;//serial, using in logger &
 Led *led;//just led
 RTCTime time;//using to configure and read realtime
-
+CRCHw crc;
 uint8_t flgWSTransfer = 0;
 
 #if !defined(__SOFT_FP__) && defined(__ARM_FP)
@@ -218,62 +219,96 @@ void configureLamp()
 
 }
 
+#pragma pack(1)
+struct LampParams
+{
+	uint16_t color { 0 };//2
+	uint8_t bright{ 0 };//3
+	uint8_t autoBright { 0 };//4
+	uint8_t effectNo { 0 };//5
+	uint8_t effectMode { 0 };//6
+	uint16_t dummy2 { 0 };//8
+
+	uint8_t crc { 0x00 };//8
+}lparams;
+#pragma pack()
+uint32_t paramsEEPROMAddress { 0x00 };
 int main(void)
 {
 	Memory24xx mem;
-
-	mem.setInterfaceRead(readI2C1);
-	mem.setInterfaceWrite(writeI2C1);
-	mem.setMemoryParams(4096, 0xA0);
-
-	//mem.writeArray(00, 0, 16);
-	//mem.readArray(00, 16, 00);
 	LightSensor5528 lightSensor(1000000, &sensorADC, AnalogConverter::ADC_7);
 	CONFIG lampConfiguration;
 	ResistanceConverter RConverter;
 	SmartPixelStrip* ledstrip = new SmartPixelStrip(32,SmartPixelStrip::WS2812, SmartPixelStrip::ONCE_MODE, startWsTransfer);
+	LedPairs pairs(ledstrip);
 	hwLA = ledstrip->getHwAdress();
 	initializeHw();
 	initializeModules();
 	uint32_t* address;
 
-	initializeDMA(address, ledstrip->hwSize());
+	mem.setInterfaceRead(readI2C1);
+	mem.setInterfaceWrite(writeI2C1);
+	i2cFindDevices();
+	mem.setMemoryParams(512, 0xA0);
+	LOG->DEBG("Initialize crc module...");
+	crc.init(0x00000000, CRCHw::POLYSIZE_8, 0x31, true, CRCHw::BY_WORD);
 
+	initializeDMA(address, ledstrip->hwSize());
 	initWSTimer();
+
+
+
 	NVIC->ISER |= (1 << 10); // enable interrupt # 28 (USART2)
 	NVIC->ISER |= (1 << 16); // enable interrupt # 28 (USART2)
 
-//	initWs2812Buff();
-		//setAllLedsBright(10);
-		setLedMode(LED_ONCE);
-	//	setAllLedsColor(500);
 
 
-		ledstrip->getLed(0)->setGreen(1);
-		ledstrip->getLed(0)->setBright(21);
+	setLedMode(LED_ONCE);
+
+#define I2C_NO_ERR 0
+#define I2C_NO_DEVICE -1
+#define I2C_TIMEOUT -2
+#define I2C_BUSY -3
+#define I2C_ARLO -4
+#define I2C_BUSERR -5
+
+
+		mem.readArray(reinterpret_cast<uint8_t*>(&lparams), sizeof(LampParams), paramsEEPROMAddress);
+			uint8_t calculatedCrc = crc.calcCRC(reinterpret_cast<uint8_t*>(&lparams), sizeof(LampParams)-1);
+			if(lparams.crc!= calculatedCrc)
+			{
+				///motoMinsMem.motoMinutes = 0;
+				//motoMinsMem.crc = crc->calcCRC(reinterpret_cast<uint8_t*>(&motoMinsMem), sizeof(MotoMinsMemHeader)-1);
+				LOG->DEBG("Error reading from mem! set 0!");
+				lampConfiguration.autoBright = true;
+				lampConfiguration.bright = 1;
+				lampConfiguration.colorValue = 0;
+				lampConfiguration.currentEffect = 1;
+				lampConfiguration.effectMode = 0;
+
+				//mem.writeArray(motoMinsAddress, reinterpret_cast<uint8_t*>(&motoMinsMem), sizeof(MotoMinsMemHeader));
+			}
+			else
+			{
+				LOG->DEBG("From memory:");
+				LOG->DEBG("AutoBright: ", lparams.autoBright);
+				LOG->DEBG("Bright value: ", lparams.bright);
+				LOG->DEBG("Color: ", lparams.color);
+				LOG->DEBG("Effect on: ", lparams.effectMode);
+				LOG->DEBG("EffetNo: ", lparams.effectNo);
+				lampConfiguration.autoBright = lparams.autoBright;
+				lampConfiguration.bright = lparams.bright;
+				lampConfiguration.colorValue = lparams.color;
+				lampConfiguration.currentEffect = lparams.effectNo;
+				lampConfiguration.effectMode = lparams.effectMode;
+			}
 
 
 
-		ledstrip->getLed(1)->setRed(2);
-		ledstrip->getLed(1)->setBright(21);
-
-
-		ledstrip->getLed(2)->setBlue(3);
-		ledstrip->getLed(2)->setBright(21);
-
-
-		ledstrip->getLed(3)->setGreen(4);
-		ledstrip->getLed(3)->setRed(255);
-		ledstrip->getLed(3)->setBright(21);
-
-
-		ledstrip->getLed(4)->setGreen(5);
-		ledstrip->getLed(4)->setBlue(255);
-		ledstrip->getLed(4)->setBright(21);
 
 
 
-		LedPairs pairs(ledstrip);
+
 
 		pairs.setPair(0, 0, 10);
 		pairs.setPair(1, 1, 15);
@@ -334,13 +369,22 @@ int main(void)
 
 		ledstrip->refresh();
 
-		//LedEffects ledEffect(ledstrip);
+
 		LedEffects ledEffect(&pairs);
-		//LedEffects ledEffect(&pairs);
 		ledEffect.setSpeed(2500);
 
-		//ledEffect.setRainbowEachPairCoefficient(350);
-		ledEffect.setEffect(LedEffects::FIRE_ALL);
+
+		if(lampConfiguration.effectMode)
+		{
+			ledEffect.setEffect(static_cast<LedEffects::Effects>(lampConfiguration.currentEffect));
+			ledEffect.setEffectBright(lampConfiguration.bright);
+		}
+		else
+		{
+			ledstrip->setBright(lampConfiguration.bright);
+			ledstrip->setColor(lampConfiguration.colorValue);
+		}
+
 
 	//	startWsTransfer();
 		LOG->DEBG("ALl ready!");
@@ -404,6 +448,9 @@ int main(void)
 				ledstrip->refresh();
 				lampConfiguration.colorChanged = false;
 				LOG->DEBG("Color changed! - ", lampConfiguration.colorValue);
+				lparams.color = lampConfiguration.colorValue;
+				lparams.crc = crc.calcCRC(reinterpret_cast<uint8_t*>(&lparams), sizeof(LampParams)-1);
+							mem.writeArray(paramsEEPROMAddress, reinterpret_cast<uint8_t*>(&lparams), sizeof(LampParams));
 			}
 
 			if(lampConfiguration.effectChanged)
@@ -412,6 +459,8 @@ int main(void)
 				lampConfiguration.effectChanged = false;
 				LOG->DEBG("Effect changed! - ", lampConfiguration.currentEffect);
 			}
+
+
 		}
 	}
 }

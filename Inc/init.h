@@ -40,7 +40,7 @@ uint16_t spi2GetData();
 void initEXTIPins();
 void initializeHw();
 
-
+void i2cFindDevices();
 
 void initWSTimer();
 

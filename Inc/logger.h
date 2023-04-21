@@ -37,6 +37,8 @@ public:
 	void DEBG(const char *String);
 	void DEBG(const char *String, int number);
 	void DEBG(const char *String, int number, int number2);
+	void DEBGH(const char *String, int number);
+	void printsh(const char *String, int number);
 	void stateMsg(const char *String);
 	void stateMsg(float power, int16_t t1, int16_t t2, int8_t t3, float vgen, bool errt1, bool errt2, bool errt3);
 	void setTimeShow(bool on){ timeOn = on; };

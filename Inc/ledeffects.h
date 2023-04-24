@@ -59,7 +59,7 @@ public:
 	LedEffects(SmartPixelStrip* strip);
 	LedEffects(LedPairs* pairs);
 	virtual ~LedEffects();
-
+	inline SmartPixelStrip* getLedsStrip() { return leds; }
 
 	enum Effects : uint8_t { NO_EFFECT = 0x00, RAINBOW_ALL = 0x01, RAINBOW_EACH = 0x02, FIRE_ALL = 0x03, FIRE_EACH = 0x04,   RUN_PIXELS = 0x05,  RUN_PIXELS_SOFT = 0x06, RAINBOW_PAIRS = 0x07,
 		RAINBOW_EACH_PAIR = 0x08, RUN_PAIRS = 0x09,  RUN_PAIRS_SOFT = 0x0a} effect { NO_EFFECT };

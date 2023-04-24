@@ -89,6 +89,7 @@ void Logger::printTime()
 
 void Logger::DEBG(const char *String)
 {
+
 	if(timeOn) printTime();
 	prints("[DBG]");
 	prints(String);

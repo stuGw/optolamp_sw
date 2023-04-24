@@ -248,127 +248,6 @@ void initI2C1()
 }
 
 
-/*
-void writeI2C1(uint8_t addrMode, uint16_t deviceAddress, uint16_t memAddress, uint8_t count, uint8_t* data, bool twoByteAddress)
-{
-	uint16_t tmp = count + 1;//+ address byte
-
-	if(twoByteAddress) tmp = count + 2;
-
-	I2C1->CR2 |= ((addrMode&0x1)<<11);///ADD10 set address mode 0 - 7bit, 1 - 10bit
-
-	I2C1->CR2 &= ~0x00000500; //RD/WRN = 0 - write
-	I2C1->CR2 &= ~0x00ff0000; //clear num bytes
-	I2C1->CR2 |= tmp<<16;
-
-	I2C1->CR2 |= 0x02000000;//AUTOEND = 1; STOP after transfer
-
-	I2C1->CR2 |= deviceAddress; // set slave address
-
-	I2C1->CR2 |= 0x00002000; //start
-
-	volatile uint32_t waitTimer = 0;
-	int countToSend = 0;
-	//write address byte
-	if(twoByteAddress)
-	{
-		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return; }//wait until txis setted to 1
-		I2C1->TXDR = (memAddress>>8)&0xff;//data[countToSend];//High byte of address
-
-		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return; }//wait until txis setted to 1
-		I2C1->TXDR = memAddress&0xff;//data[countToSend];
-	}
-	else
-	{
-		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return; }//wait until txis setted to 1
-		I2C1->TXDR = memAddress&0xff;//data[countToSend];
-	}
-	//transmit while num bytes != 0;
-	while(countToSend<count)
-	{
-		waitTimer = 0;
-		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return; }; //wait until txis setted to 1
-		I2C1->TXDR = data[countToSend];
-		countToSend++;
-	}
-
-}
-//read count bytes from device(deviceAddress) position addrFom
-void readI2C1(uint8_t addrMode, uint16_t deviceAddress, uint16_t addrFrom, uint8_t count, uint8_t* data, bool twoByteAddress)
-{
-	//write address of memory to be readed
-	uint16_t tmp = 1;
-
-	if(twoByteAddress) tmp = 2;
-
-	//i2cStatusFlag = 1;
-	I2C1->CR2 |= ((addrMode&0x1)<<11);///ADD10 set address mode 0 - 7bit, 1 - 10bit
-
-	I2C1->CR2 &= ~0x00000500; //RD/WRN = 0 - write
-	I2C1->CR2 &= ~0x00ff0000;//clear num bytes
-	I2C1->CR2 |= tmp<<16;//set actual num bytes
-
-	I2C1->CR2 &= ~0x02000000;//AUTOEND = 1; STOP after transfer
-
-	I2C1->CR2 |= deviceAddress&0xff; // set slave address
-
-	I2C1->CR2 |= 0x00002000; //start
-
-	//i2cStatusFlag = 0;
-
-	int countToRecieve = 0;
-	volatile uint32_t waitTimer = 0;
-
-	if(twoByteAddress)
-	{
-		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return; }; //wait until txis setted to 1
-		I2C1->TXDR = (addrFrom>>8)&0xff;//data[countToSend];//High byte of address
-
-		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return; }; //wait until txis setted to 1
-		I2C1->TXDR = (addrFrom)&0xff;//data[countToSend];//Low Byte of address
-
-	}
-	else
-	{
-		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return; }; //wait until txis setted to 1
-		I2C1->TXDR = addrFrom & 0xff;//data[countToSend];
-	}
-	waitTimer = 0;
-
-
-
-	while((I2C1->ISR & 0x00000040) == 0){ waitTimer++; if(waitTimer>10000) return; }; //wait until tc setted to 1
-
-	//i2cStatusFlag = 0;
-	tmp = count;
-	//read data, set devaddress and read mode
-	I2C1->CR2 |= 0x00000500; //RD/WRN = 1 - read
-	I2C1->CR2 &= ~0x00ff0000;//clear num bytes
-	I2C1->CR2 |= tmp<<16;//set actual num bytes
-
-	I2C1->CR2 |= deviceAddress&0xff; // set slave address
-
-	//I2C1->CR2 |= 0x02000000;//AUTOEND = 1; STOP after transfer
-
-	I2C1->CR2 |= 0x00002000; //start
-
-	//i2cStatusFlag = 0;
-	while(countToRecieve<count)
-	{
-		waitTimer = 0;
-		while((I2C1->ISR & 0x00000004) == 0){ waitTimer++; if(waitTimer>10000) return; };
-		data[countToRecieve] = I2C1->RXDR;
-		countToRecieve++;
-	}
-
-	if(I2C1->ISR & 0x00000040){I2C1->CR2 |= 0x00004000;  I2C1->ICR |= 0x00000020;return;}
-	waitTimer = 0;
-	while((I2C1->ISR & 0x00000040) == 0) { waitTimer++; if(waitTimer>10000) return; }; //wait until tc setted to 1
-	//	}
-	//}
-}
-*/
-
 //#define I2C
 int8_t errI2C1()
 {
@@ -380,7 +259,20 @@ int8_t errI2C1()
 	return I2C_TIMEOUT;
 }
 
+bool I2C1WaitTXIS()
+{
+	volatile uint16_t waitTimer { 0 };
+	while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return false; }
+	return true;
+}
 
+
+bool I2C1WaitRegBit(volatile uint32_t *reg, uint32_t mask)
+{
+	volatile uint16_t waitTimer { 0 };
+	while((*(reg) & mask) == 0){ waitTimer++; if(waitTimer>10000) return false; }
+	return true;
+}
 int8_t writeI2C1(uint8_t addrMode, uint16_t deviceAddress, uint16_t memAddress, uint8_t count, uint8_t* data, bool twoByteAddress)
 {
 	uint32_t tmp = count + 1;//+ address byte
@@ -404,23 +296,23 @@ int8_t writeI2C1(uint8_t addrMode, uint16_t deviceAddress, uint16_t memAddress, 
 	//write address byte
 	if(twoByteAddress)
 	{
-		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return errI2C1(); }//wait until txis setted to 1
+		if(!I2C1WaitRegBit(&I2C1->ISR, 0x00000002)) return errI2C1();//while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return errI2C1(); }//wait until txis setted to 1
 		I2C1->TXDR = (memAddress>>8)&0xff;//data[countToSend];//High byte of address
 
 		waitTimer = 0;
-		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return errI2C1(); }//wait until txis setted to 1
+		if(!I2C1WaitRegBit(&I2C1->ISR, 0x00000002)) return errI2C1();//while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return errI2C1(); }//wait until txis setted to 1
 		I2C1->TXDR = memAddress&0xff;//data[countToSend];
 	}
 	else
 	{
-		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return errI2C1(); }//wait until txis setted to 1
+		if(!I2C1WaitRegBit(&I2C1->ISR, 0x00000002)) return errI2C1();//while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return errI2C1(); }//wait until txis setted to 1
 		I2C1->TXDR = memAddress&0xff;//data[countToSend];
 	}
 	//transmit while num bytes != 0;
 	while(countToSend<count)
 	{
 		waitTimer = 0;
-		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return errI2C1(); }; //wait until txis setted to 1
+		if(!I2C1WaitRegBit(&I2C1->ISR, 0x00000002)) return errI2C1();//while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000) return errI2C1(); }; //wait until txis setted to 1
 		I2C1->TXDR = data[countToSend];
 		countToSend++;
 	}
@@ -455,47 +347,47 @@ int8_t readI2C1(uint8_t addrMode, uint16_t deviceAddress, uint16_t addrFrom, uin
 
 	if(twoByteAddress)
 	{
-		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000)return errI2C1(); }; //wait until txis setted to 1
+		if(!I2C1WaitRegBit(&I2C1->ISR, 0x00000002)) return errI2C1();//while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000)return errI2C1(); }; //wait until txis setted to 1
 		I2C1->TXDR = (addrFrom>>8)&0xff;//High byte of address
 		waitTimer = 0;
-		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000)return errI2C1(); }; //wait until txis setted to 1
+		if(!I2C1WaitRegBit(&I2C1->ISR, 0x00000002)) return errI2C1();//while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000)return errI2C1(); }; //wait until txis setted to 1
 
 		I2C1->TXDR = (addrFrom)&0xff;//Low Byte of address
 	}
 	else
 	{
 		waitTimer = 0;
-		while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000)return errI2C1(); }; //wait until txis setted to 1
+		if(!I2C1WaitRegBit(&I2C1->ISR, 0x00000002)) return errI2C1();//while((I2C1->ISR & 0x00000002) == 0){ waitTimer++; if(waitTimer>10000)return errI2C1(); }; //wait until txis setted to 1
 		I2C1->TXDR = addrFrom & 0xff;//address
 	}
 	waitTimer = 0;
 
-	while((I2C1->ISR & 0x00000040) == 0){ waitTimer++; if(waitTimer>10000)return errI2C1(); }; //wait until tc setted to 1
+	if(!I2C1WaitRegBit(&I2C1->ISR, 0x00000040)) return errI2C1();//{ waitTimer++; if(waitTimer>10000)return errI2C1(); }; //wait until tc setted to 1
 
 	tmp = count;
 	//read data, set devaddress and read mode
-	I2C1->CR1 |= 0x00000400; //RD/WRN = 1 - read
-	I2C1->CR1 &= ~0x00ff0000;//clear num bytes
-	I2C1->CR1 |= tmp<<16;//set actual num bytes
-	I2C1->CR1 &= ~0x01000000;
-	I2C1->CR1 |= deviceAddress&0xff; // set slave address
+	I2C1->CR2 |= 0x00000400; //RD/WRN = 1 - read
+	I2C1->CR2 &= ~0x00ff0000;//clear num bytes
+	I2C1->CR2 |= tmp<<16;//set actual num bytes
+	I2C1->CR2 &= ~0x01000000;
+	I2C1->CR2 |= deviceAddress&0xff; // set slave address
 
-	I2C1->CR1 |= 0x02000000;//AUTOEND = 1; STOP after transfer
+	I2C1->CR2 |= 0x02000000;//AUTOEND = 1; STOP after transfer
 
-	I2C1->CR1 |= 0x00002000; //start
+	I2C1->CR2 |= 0x00002000; //start
 
 	//i2cStatusFlag = 0;
 	while(countToRecieve<count)
 	{
 		waitTimer = 0;
-		while((I2C1->ISR & 0x00000004) == 0){ waitTimer++; if(waitTimer>10000)return errI2C1(); };
+		if(!I2C1WaitRegBit(&I2C1->ISR, 0x00000004)) return errI2C1();//while((I2C1->ISR & 0x00000004) == 0){ waitTimer++; if(waitTimer>10000)return errI2C1(); };
 		data[countToRecieve] = I2C1->RXDR;
 		countToRecieve++;
 	}
 
 	//I2C1->CR2 |= 0x00004000;//STOP after transfer complete
 	//waitTimer = 0;
-	while((I2C1->ISR & 0x00000020) == 0x00000000){ waitTimer++; if(waitTimer>10000)return errI2C1(); };
+	if(!I2C1WaitRegBit(&I2C1->ISR, 0x00000020)) return errI2C1();//)//while((I2C1->ISR & 0x00000020) == 0x00000000){ waitTimer++; if(waitTimer>10000)return errI2C1(); };
 	I2C1->ICR |= 0x00000020;//clear stop flag
 
 	return I2C_NO_ERR;

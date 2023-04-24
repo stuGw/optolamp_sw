@@ -24,15 +24,23 @@ public:
 	LightSensor5528(uint32_t darkResistance  = 1000000, AnalogConverter* source = nullptr, AnalogConverter::Channels channel = AnalogConverter::ADC_0);
 	enum sensorStates : int8_t  { VALUE_NOT_CHANGED = -1, SENSOR_ERROR = -2 };
 	int32_t getSensorData();
-	int32_t getValue()
+	int32_t getValue(bool checkChanging = true)
 	{
 		int32_t value = getSensorData()/lightDiscrete;
-		if(lastValue!=value)
+		if( checkChanging)
+		{
+			if(lastValue!=value)
+			{
+				lastValue = value;
+				return maxValue - value;
+			}
+			else return VALUE_NOT_CHANGED;
+		}
+		else
 		{
 			lastValue = value;
 			return maxValue - value;
 		}
-		else return VALUE_NOT_CHANGED;
 	}
 	virtual ~LightSensor5528();
 };

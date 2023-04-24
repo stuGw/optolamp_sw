@@ -33,6 +33,9 @@
 #include "lightsensor5528.h"
 #include "memory24xx.h"
 #include "crchw.h"
+#include "version.h"
+
+
 
 #if !defined(__SOFT_FP__) && defined(__ARM_FP)
   #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
@@ -45,9 +48,11 @@ Button bLeft;
 Button bRight;
 uint32_t* hwLA;
 AnalogConverter sensorADC;
+
 Serial serial;//serial, using in logger &
 Led *led;//just led
 RTCTime time;//using to configure and read realtime
+
 CRCHw crc;
 uint8_t flgWSTransfer = 0;
 
@@ -81,15 +86,6 @@ void DMA_2_3_Handler()
 void TIM3_Handler(void)
 {
 	static int counter = 0;
-/*	if(counter>=1*24+5)
-	{
-		stopTimer3();
-		//startLightSensDMA();//Запускаем канал LightSens
-		flgWSTransfer = WS_TRANSFER_READY;//Передача закончена - можно передавать заново
-		counter = 0;
-	}
-	else
-		counter++;*/
 	if(!(DMA->CCR2&0x0001))stopTimer3();
 	if( DMA->IFCR &0x00000010)stopTimer3();//DMA_IFCR_CGIF6;)
 	TIM3->SR &= ~0x0001; //Clean UIF Flag
@@ -125,8 +121,8 @@ void initializeModules()
 		led->on();
 
 		serial.begin();
-		serial.DEBG("Starting hardware initialization...");
-		serial.DEBG("RTC initialization...");
+		//serial.DEBG("Starting hardware initialization...");
+		//serial.DEBG("RTC initialization...");
 
 		RTCTime::TimeNDate tmdt;
 		tmdt.hour = 0;
@@ -153,72 +149,6 @@ void initializeModules()
 }
 
 
-struct CONFIG
-{
-	bool brightChanged{ 0 };
-	bool colorChanged { 0 };
-	bool effectChanged { 0 };
-	uint8_t bright { 1 };
-	bool autoBright { true };
-	uint16_t colorValue { 0 };
-	uint8_t currentEffect { 0 };
-	bool effectMode { false };
-};
-
-bool getConfiguration(CONFIG* conf, Button *buttonR, Button *buttonL)
-{
-	bool changed = false;
-	Button::State bRState = buttonR->getState();
-	Button::State bLState = buttonL->getState();
-	if(bRState == Button::DOUBLE)
-	{
-		conf->autoBright = !conf->autoBright;
-		if(conf->autoBright) LOG->DEBG("Autobright on!"); else LOG->DEBG("Autobright off");
-		changed = true;
-	}
-
-	if(bLState == Button::DOUBLE)
-	{
-		conf->effectMode = !conf->effectMode;
-		if(conf->effectMode) LOG->DEBG("Effect mode on!"); else LOG->DEBG("Effect mode off");
-		changed = true;
-	}
-
-	if(bRState == Button::SINGLE)
-	{
-		if(!conf->autoBright)
-		{
-			conf->bright+=2;
-			if(conf->bright > 21) conf->bright = 1;
-			conf->brightChanged = true;
-			changed = true;
-		}
-	}
-
-	if(bLState == Button::SINGLE)
-	{
-		if(conf->effectMode)
-		{
-			conf->currentEffect++;
-			if(conf->currentEffect>10)conf->currentEffect = 1;
-			conf->effectChanged = true;
-		}
-		else
-		{
-			conf->colorValue+=50;
-			if(conf->colorValue>1530)conf->colorValue = 0;
-			conf->colorChanged = true;
-		}
-		changed = true;
-	}
-	return changed || conf->brightChanged;
-}
-
-void configureLamp()
-{
-
-}
-
 #pragma pack(1)
 struct LampParams
 {
@@ -227,12 +157,201 @@ struct LampParams
 	uint8_t autoBright { 0 };//4
 	uint8_t effectNo { 0 };//5
 	uint8_t effectMode { 0 };//6
-	uint16_t dummy2 { 0 };//8
-
+	uint8_t dummy2 { 0 };//7
 	uint8_t crc { 0x00 };//8
-}lparams;
+};
+
+struct CONFIG
+{
+	LampParams parameters;
+	bool brightChanged{ 0 };
+	bool colorChanged { 0 };
+	bool effectChanged { 0 };
+	bool autoBrightSetted { 0 };
+
+};
+
 #pragma pack()
+
+
+bool getConfiguration(CONFIG* conf, Button *buttonR, Button *buttonL)
+{
+	bool changed = false;
+	Button::State bRState = buttonR->getState();
+	Button::State bLState = buttonL->getState();
+	if(bRState == Button::DOUBLE)
+	{
+		conf->parameters.autoBright = !conf->parameters.autoBright;
+		if(conf->parameters.autoBright)
+		{
+
+			conf->autoBrightSetted = true;
+
+			LOG->DEBG("Autobright on!");
+		}
+		else LOG->DEBG("Autobright off");
+		changed = true;
+	}
+
+	if(bLState == Button::DOUBLE)
+	{
+		conf->parameters.effectMode = !conf->parameters.effectMode;
+		if(conf->parameters.effectMode) LOG->DEBG("Effect mode on!"); else LOG->DEBG("Effect mode off");
+		changed = true;
+	}
+
+	if(bRState == Button::SINGLE)
+	{
+		if(!conf->parameters.autoBright)
+		{
+			conf->parameters.bright+=2;
+			if(conf->parameters.bright > 21) conf->parameters.bright = 1;
+			conf->brightChanged = true;
+			changed = true;
+		}
+	}
+
+	if(bLState == Button::SINGLE)
+	{
+		if(conf->parameters.effectMode)
+		{
+			conf->parameters.effectNo++;
+			if(conf->parameters.effectNo>10)conf->parameters.effectNo = 1;
+			conf->effectChanged = true;
+		}
+		else
+		{
+			conf->parameters.color+=50;
+			if(conf->parameters.color>1530)conf->parameters.color = 0;
+			conf->colorChanged = true;
+		}
+		changed = true;
+	}
+	return changed || conf->brightChanged;
+}
+
+void configureLamp(CONFIG* lampConfiguration, LedEffects* leds)
+{
+	if(lampConfiguration->brightChanged)
+		{
+			if(lampConfiguration->parameters.effectMode)leds->setEffectBright(lampConfiguration->parameters.bright); else { leds->getLedsStrip()->setBright(lampConfiguration->parameters.bright); };
+			lampConfiguration->brightChanged = false;
+			LOG->DEBG("Bright changed! - ", lampConfiguration->parameters.bright);
+
+		}
+
+
+		//color/effect
+		if(lampConfiguration->colorChanged)
+		{
+			leds->getLedsStrip()->setColor(lampConfiguration->parameters.color);
+			lampConfiguration->colorChanged = false;
+			LOG->DEBG("Color changed! - ", lampConfiguration->parameters.color);
+
+		}
+
+		if(lampConfiguration->effectChanged)
+		{
+			leds->setEffect((LedEffects::Effects)lampConfiguration->parameters.effectNo);
+			lampConfiguration->effectChanged = false;
+			LOG->DEBG("Effect changed! - ", lampConfiguration->parameters.effectNo);
+
+		}
+
+
+
+		if(!lampConfiguration->parameters.effectMode)
+		{
+			leds->getLedsStrip()->refresh();
+		}
+}
+
+void autoBrightLamp(CONFIG* lampConfiguration, LedEffects* leds, LightSensor5528* sensor)
+{
+	if(lampConfiguration->parameters.autoBright)
+	{
+		int32_t autoBrightValue = sensor->getValue();
+		if(lampConfiguration->autoBrightSetted)
+		{
+			lampConfiguration->autoBrightSetted = false;
+			leds->getLedsStrip()->setBright(sensor->getValue(false));
+			LOG->DEBG("Bright value = ", sensor->getValue(false));
+			leds->getLedsStrip()->refresh();
+		}
+		else if(autoBrightValue!= LightSensor5528::VALUE_NOT_CHANGED)
+		{
+			LOG->DEBG("AutoBright value = ", autoBrightValue);
+			if(lampConfiguration->parameters.effectMode)leds->setEffectBright(autoBrightValue); else { leds->getLedsStrip()->setBright(autoBrightValue); leds->getLedsStrip()->refresh(); };
+		}
+	}
+}
+
+inline void configureLedPairs(LedPairs* pairs)
+{
+	pairs->setPair(0, 0, 10);
+			pairs->setPair(1, 1, 15);
+			pairs->setPair(2, 2, 17);
+			pairs->setPair(3, 3, 19);
+
+			pairs->setPair(4, 4, 23);
+			pairs->setPair(5, 5, 27);
+			pairs->setPair(6, 6, 26);
+			pairs->setPair(7, 7, 21);
+
+			pairs->setPair(8, 8, 16);
+			pairs->setPair(9, 9, 25);
+			pairs->setPair(10, 11, 28);
+			pairs->setPair(11, 12, 22);
+
+			pairs->setPair(12, 13, 31);
+			pairs->setPair(13, 14, 24);
+			pairs->setPair(14, 18, 30);
+			pairs->setPair(15, 20, 29);
+
+			pairs->getPair(0)->setBright(21);
+			pairs->getPair(0)->setColor(255,0,0);
+			pairs->getPair(0)->refresh();
+
+			pairs->getPair(1)->setBright(21);
+			pairs->getPair(1)->setColor(0,255,0);
+			pairs->getPair(1)->refresh();
+
+			pairs->getPair(2)->setBright(21);
+			pairs->getPair(2)->setColor(0,0,255);
+			pairs->getPair(2)->refresh();
+
+			pairs->getPair(3)->setBright(21);
+			pairs->getPair(3)->setColor(255,255,0);
+			pairs->getPair(3)->refresh();
+
+
+
+			pairs->getPair(0)->setColor(255, 0, 0,  0, 128, 0);
+			pairs->getPair(1)->setColor(0, 255, 0,  0, 128, 0);
+			pairs->getPair(2)->setColor(0, 0, 255,  0, 128, 0);
+			pairs->getPair(3)->setColor(0, 0, 255,  0, 255, 0);
+			pairs->getPair(4)->setColor(255, 0, 0,  255, 0, 0);
+			pairs->getPair(5)->setColor(0, 0, 255,  255, 0, 0);
+			pairs->getPair(6)->setColor(0, 255, 0,  255, 0, 0);
+			pairs->getPair(7)->setColor(0, 0, 255,  0, 0, 255);
+			pairs->getPair(8)->setColor(255, 0, 0,  0, 0, 255);
+			pairs->getPair(9)->setColor(0, 255, 0,  0, 0, 255);
+			pairs->getPair(10)->setColor(255, 0, 0,  255, 0, 0);
+			pairs->getPair(11)->setColor(0, 0, 255,  0, 255, 255);
+			pairs->getPair(12)->setColor(255, 0, 0,  255, 255, 0);
+			pairs->getPair(13)->setColor(0, 0, 255,  0, 0, 255);
+			pairs->getPair(14)->setColor(255, 0, 0,  0, 128, 233);
+			pairs->getPair(15)->setColor(0, 255, 0,  0, 128, 0);
+}
+
+
 uint32_t paramsEEPROMAddress { 0x00 };
+uint16_t sizeOfEEPROM { 32768 };
+uint8_t addressOfEEPROM { 0xA0 };
+
+
+
+
 int main(void)
 {
 	Memory24xx mem;
@@ -245,14 +364,17 @@ int main(void)
 	initializeHw();
 	initializeModules();
 	uint32_t* address;
-
+	LOG->DEBG("Initialize memory iface, size = ",sizeOfEEPROM);
 	mem.setInterfaceRead(readI2C1);
 	mem.setInterfaceWrite(writeI2C1);
-	i2cFindDevices();
-	mem.setMemoryParams(512, 0xA0);
+//	i2cFindDevices();
+
+	mem.setMemoryParams(sizeOfEEPROM, addressOfEEPROM);
+
 	LOG->DEBG("Initialize crc module...");
 	crc.init(0x00000000, CRCHw::POLYSIZE_8, 0x31, true, CRCHw::BY_WORD);
 
+	LOG->DEBG("Initialize ws DMA & Timer");
 	initializeDMA(address, ledstrip->hwSize());
 	initWSTimer();
 
@@ -265,202 +387,78 @@ int main(void)
 
 	setLedMode(LED_ONCE);
 
-#define I2C_NO_ERR 0
-#define I2C_NO_DEVICE -1
-#define I2C_TIMEOUT -2
-#define I2C_BUSY -3
-#define I2C_ARLO -4
-#define I2C_BUSERR -5
+	LOG->DEBG("Read lamp configuration from EEPROM...");
+		mem.readArray(reinterpret_cast<uint8_t*>(&lampConfiguration.parameters), sizeof(LampParams), paramsEEPROMAddress);
 
 
-		mem.readArray(reinterpret_cast<uint8_t*>(&lparams), sizeof(LampParams), paramsEEPROMAddress);
-			uint8_t calculatedCrc = crc.calcCRC(reinterpret_cast<uint8_t*>(&lparams), sizeof(LampParams)-1);
-			if(lparams.crc!= calculatedCrc)
+		LOG->DEBG("Ready!");
+			uint8_t calculatedCrc = crc.calcCRC(reinterpret_cast<uint8_t*>(&lampConfiguration.parameters), sizeof(LampParams)-1);
+			if(lampConfiguration.parameters.crc!= calculatedCrc)
 			{
 				///motoMinsMem.motoMinutes = 0;
 				//motoMinsMem.crc = crc->calcCRC(reinterpret_cast<uint8_t*>(&motoMinsMem), sizeof(MotoMinsMemHeader)-1);
 				LOG->DEBG("Error reading from mem! set 0!");
-				lampConfiguration.autoBright = true;
-				lampConfiguration.bright = 1;
-				lampConfiguration.colorValue = 0;
-				lampConfiguration.currentEffect = 1;
-				lampConfiguration.effectMode = 0;
+				lampConfiguration.parameters.autoBright = true;
+				lampConfiguration.parameters.bright =  1;
+				lampConfiguration.parameters.color  = 0;
+				lampConfiguration.parameters.effectNo = 1;
+				lampConfiguration.parameters.effectMode =  0;
 
 				//mem.writeArray(motoMinsAddress, reinterpret_cast<uint8_t*>(&motoMinsMem), sizeof(MotoMinsMemHeader));
 			}
 			else
 			{
-				LOG->DEBG("From memory:");
-				LOG->DEBG("AutoBright: ", lparams.autoBright);
-				LOG->DEBG("Bright value: ", lparams.bright);
-				LOG->DEBG("Color: ", lparams.color);
-				LOG->DEBG("Effect on: ", lparams.effectMode);
-				LOG->DEBG("EffetNo: ", lparams.effectNo);
-				lampConfiguration.autoBright = lparams.autoBright;
-				lampConfiguration.bright = lparams.bright;
-				lampConfiguration.colorValue = lparams.color;
-				lampConfiguration.currentEffect = lparams.effectNo;
-				lampConfiguration.effectMode = lparams.effectMode;
+				LOG->DEBG("Configuration:");
+				LOG->DEBG("AutoBright: ", lampConfiguration.parameters.autoBright);
+				LOG->DEBG("Bright value: ",lampConfiguration.parameters.bright);
+				LOG->DEBG("Color: ", lampConfiguration.parameters.color);
+				LOG->DEBG("Effect on: ", lampConfiguration.parameters.effectMode);
+				LOG->DEBG("EffetNo: ", lampConfiguration.parameters.effectNo);
 			}
-
-
-
-
-
-
-
-
-		pairs.setPair(0, 0, 10);
-		pairs.setPair(1, 1, 15);
-		pairs.setPair(2, 2, 17);
-		pairs.setPair(3, 3, 19);
-
-		pairs.setPair(4, 4, 23);
-		pairs.setPair(5, 5, 27);
-		pairs.setPair(6, 6, 26);
-		pairs.setPair(7, 7, 21);
-
-		pairs.setPair(8, 8, 16);
-		pairs.setPair(9, 9, 25);
-		pairs.setPair(10, 11, 28);
-		pairs.setPair(11, 12, 22);
-
-		pairs.setPair(12, 13, 31);
-		pairs.setPair(13, 14, 24);
-		pairs.setPair(14, 18, 30);
-		pairs.setPair(15, 20, 29);
-
-		pairs.getPair(0)->setBright(21);
-		pairs.getPair(0)->setColor(255,0,0);
-		pairs.getPair(0)->refresh();
-
-		pairs.getPair(1)->setBright(21);
-		pairs.getPair(1)->setColor(0,255,0);
-		pairs.getPair(1)->refresh();
-
-		pairs.getPair(2)->setBright(21);
-		pairs.getPair(2)->setColor(0,0,255);
-		pairs.getPair(2)->refresh();
-
-		pairs.getPair(3)->setBright(21);
-		pairs.getPair(3)->setColor(255,255,0);
-		pairs.getPair(3)->refresh();
-
-		pairs.setBright(17);
-
-		pairs.getPair(0)->setColor(255, 0, 0,  0, 128, 0);
-		pairs.getPair(1)->setColor(0, 255, 0,  0, 128, 0);
-		pairs.getPair(2)->setColor(0, 0, 255,  0, 128, 0);
-		pairs.getPair(3)->setColor(0, 0, 255,  0, 255, 0);
-		pairs.getPair(4)->setColor(255, 0, 0,  255, 0, 0);
-		pairs.getPair(5)->setColor(0, 0, 255,  255, 0, 0);
-		pairs.getPair(6)->setColor(0, 255, 0,  255, 0, 0);
-		pairs.getPair(7)->setColor(0, 0, 255,  0, 0, 255);
-		pairs.getPair(8)->setColor(255, 0, 0,  0, 0, 255);
-		pairs.getPair(9)->setColor(0, 255, 0,  0, 0, 255);
-		pairs.getPair(10)->setColor(255, 0, 0,  255, 0, 0);
-		pairs.getPair(11)->setColor(0, 0, 255,  0, 255, 255);
-		pairs.getPair(12)->setColor(255, 0, 0,  255, 255, 0);
-		pairs.getPair(13)->setColor(0, 0, 255,  0, 0, 255);
-		pairs.getPair(14)->setColor(255, 0, 0,  0, 128, 233);
-		pairs.getPair(15)->setColor(0, 255, 0,  0, 128, 0);
-
-
-
-		ledstrip->refresh();
 
 
 		LedEffects ledEffect(&pairs);
 		ledEffect.setSpeed(2500);
 
 
-		if(lampConfiguration.effectMode)
+		if(lampConfiguration.parameters.effectMode)
 		{
-			ledEffect.setEffect(static_cast<LedEffects::Effects>(lampConfiguration.currentEffect));
-			ledEffect.setEffectBright(lampConfiguration.bright);
+			ledEffect.setEffect(static_cast<LedEffects::Effects>(lampConfiguration.parameters.effectNo));
+			ledEffect.setEffectBright(lampConfiguration.parameters.bright);
 		}
 		else
 		{
-			ledstrip->setBright(lampConfiguration.bright);
-			ledstrip->setColor(lampConfiguration.colorValue);
+			ledstrip->setBright(lampConfiguration.parameters.bright);
+			ledstrip->setColor(lampConfiguration.parameters.color);
 		}
 
+		ledstrip->refresh();
 
 	//	startWsTransfer();
-		LOG->DEBG("ALl ready!");
+		LOG->DEBG(version);
+	//	LOG->DEBG("WHY0YOU1DONT2WANT3PRINT4NUMBERS5NAORMAL6?");
+
     /* Loop forever */
-	for(;;)
+
+		for(;;)
 	{
-		static uint16_t ledColor { 0 };
-		static uint8_t ledBright { 1 };
-		static uint16_t sensorValue { 0 };
-		static int16_t autoBrightValue { 0 };
-		static int16_t lastAutoBrightValue { 0 };
-		bool lightChanged { true };
-		uint8_t buttonLeftState { 0 };
-		uint8_t buttonRightState { 0 };
 
+		if(getConfiguration(&lampConfiguration, &bRight, &bLeft))
+		{
+			configureLamp(&lampConfiguration, &ledEffect);
 
-		lampConfiguration.brightChanged = false;
+			lampConfiguration.parameters.crc = crc.calcCRC(reinterpret_cast<uint8_t*>(&lampConfiguration.parameters), sizeof(LampParams)-1);
+		    mem.writeArray(paramsEEPROMAddress, reinterpret_cast<uint8_t*>(&lampConfiguration.parameters), sizeof(LampParams));
+
+		}
+
+		autoBrightLamp(&lampConfiguration, &ledEffect, &lightSensor);
 
 		if(flagButt)
 		{
-
-			autoBrightValue = lightSensor.getValue();//WS_MAX_BRIGHT - (sensorValue/100);
-
-			if(autoBrightValue<1)
-			{
-				lightChanged = false;
-			}
-			else
-			{
-				if(lampConfiguration.autoBright)
-				{
-					lampConfiguration.bright = autoBrightValue;
-					lampConfiguration.brightChanged = true;
-				}
-
-				LOG->DEBG("AUTOBRIGHT = ", autoBrightValue);
-			}
-
 			flagSecund = 0;
-
-			if(lampConfiguration.effectMode)ledEffect.play();
-
+			if(lampConfiguration.parameters.effectMode)ledEffect.play();
 			flagButt = 0;
-		}
-
-		if(getConfiguration(&lampConfiguration,&bRight, &bLeft))
-		{
-
-			if(lampConfiguration.brightChanged)
-			{
-				if(lampConfiguration.effectMode)ledEffect.setEffectBright(lampConfiguration.bright); else { ledstrip->setBright(lampConfiguration.bright); ledstrip->refresh(); };
-				lampConfiguration.brightChanged = false;
-				LOG->DEBG("Bright changed! - ", lampConfiguration.bright);
-			}
-
-
-			//color/effect
-			if(lampConfiguration.colorChanged)
-			{
-				ledstrip->setColor(lampConfiguration.colorValue);
-				ledstrip->refresh();
-				lampConfiguration.colorChanged = false;
-				LOG->DEBG("Color changed! - ", lampConfiguration.colorValue);
-				lparams.color = lampConfiguration.colorValue;
-				lparams.crc = crc.calcCRC(reinterpret_cast<uint8_t*>(&lparams), sizeof(LampParams)-1);
-							mem.writeArray(paramsEEPROMAddress, reinterpret_cast<uint8_t*>(&lparams), sizeof(LampParams));
-			}
-
-			if(lampConfiguration.effectChanged)
-			{
-				ledEffect.setEffect((LedEffects::Effects)lampConfiguration.currentEffect);
-				lampConfiguration.effectChanged = false;
-				LOG->DEBG("Effect changed! - ", lampConfiguration.currentEffect);
-			}
-
-
 		}
 	}
 }

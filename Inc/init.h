@@ -25,11 +25,14 @@
 #define GPIOPIN_14 0x00004000
 #define GPIOPIN_15 0x00008000
 
+
+//#define DBG
+
 void initI2C1GPIO();
 void offI2C1();
 void initI2C1();
-void writeI2C1(uint8_t addrMode, uint16_t deviceAddress, uint16_t memAddress, uint8_t count, uint8_t* data, bool twoByteAddress);
-void readI2C1(uint8_t addrMode, uint16_t deviceAddress, uint16_t addrFrom, uint8_t count, uint8_t* data, bool twoByteAddress);
+int8_t writeI2C1(uint8_t addrMode, uint16_t deviceAddress, uint16_t memAddress, uint8_t count, uint8_t* data, bool twoByteAddress);
+int8_t readI2C1(uint8_t addrMode, uint16_t deviceAddress, uint16_t addrFrom, uint8_t count, uint8_t* data, bool twoByteAddress);
 void initLedPin();
 void initBeeperPin();
 void initHD44780GPIOMode8();

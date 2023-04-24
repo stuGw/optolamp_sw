@@ -10,6 +10,8 @@
 #include "serial.h"
 #include "rtctime.h"
 
+
+//#define LOG //ioii
 #define LOG Logger::getInstance()
 
 class Logger {

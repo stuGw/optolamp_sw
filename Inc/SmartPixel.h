@@ -19,11 +19,15 @@ class SmartPixel {
 	uint8_t blue;
 
 	uint16_t colorHD { 0 };
+	static constexpr uint16_t maxColorValue { 1535 };
+
 
 public:
     static constexpr uint8_t HW_0 { 22 };
     static constexpr uint8_t HW_1  { 58 };
-
+    static constexpr uint16_t coldWhiteColor { 1536 };
+    	static constexpr uint16_t whiteColor { 1537 };
+    	static constexpr uint16_t warmWhiteColor { 1538 };
 	SmartPixel(uint8_t* ptr = nullptr, uint8_t r = 0, uint8_t g = 0, uint8_t b = 0, uint8_t br = 0);
 
 

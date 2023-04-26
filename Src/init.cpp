@@ -465,7 +465,7 @@ void initializeHw()
 	initSysTick();
 	initLedPin();
 	initI2C1();
-	initMemWPPin();
+	//initMemWPPin();
 	initEXTIPins();
 }
 

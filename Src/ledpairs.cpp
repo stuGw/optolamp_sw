@@ -24,7 +24,7 @@ void LedPairs::setPair(uint16_t id, uint16_t idLeft, uint16_t idRight)
 
 LedPair* LedPairs::getPair(uint16_t id)
 {
-	if(id<count) { return &pairs[id]; }
+	if(id<count) { return pairs+id; }
 }
 
 

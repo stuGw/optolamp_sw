@@ -34,12 +34,14 @@ void LedEffects::play()
 			case Effects::FIRE_ALL: { fireAll(); break; }
 			case Effects::FIRE_EACH: { fireEach(); break; }
 			case Effects::RAINBOW_PAIRS: { rainbowPairs(); break; }
-			case Effects::RAINBOW_EACH_PAIR: { rainbowEachPair(); break; }
 			case Effects::RUN_PIXELS: { runPixels(); break; }
 			case Effects::RUN_PAIRS: { runPairs(); break; }
 			case Effects::RUN_PIXELS_SOFT: { runPixelsSoft(); break; }
 			case Effects::RUN_PAIRS_SOFT: { runPairsSoft(); break; }
+			case Effects::PAIRS_ON_SLOW_DOWN: { pairsOnSlowDown(); break; }
 		}
+
+
 }
 
 void LedEffects::setEffect(Effects eff)
@@ -52,11 +54,11 @@ void LedEffects::setEffect(Effects eff)
 			case Effects::FIRE_ALL: {  break; }
 			case Effects::FIRE_EACH: {  break; }
 			case Effects::RAINBOW_PAIRS: { pairsOfLeds->setBright(effBright); break; }
-			case Effects::RAINBOW_EACH_PAIR: { pairsOfLeds->setBright(effBright); break; }
 			case Effects::RUN_PIXELS: {  break; }
 			case Effects::RUN_PAIRS: {  break; }
 			case Effects::RUN_PIXELS_SOFT: {  break; }
 			case Effects::RUN_PAIRS_SOFT: {  break; }
+			case Effects::PAIRS_ON_SLOW_DOWN: { pairsOfLeds->setBright(effBright); break; }
 		}
 	ledSpeed = 5; effect = eff;
 }
@@ -292,11 +294,12 @@ void LedEffects::rainbowPairs()
 		static unsigned short int rnbwCntr = 0;
 		static unsigned short int color = 0;
 		unsigned short int maxColor = 1535;
-		unsigned short int colorTmp;
+		unsigned short int colorTmp ;
 		rnbwCntr++;
+
 		if(rnbwCntr>ledSpeed)
 		{
-
+			pairsOfLeds->setBright(effBright);
 			for(int i = 0; i<pairsOfLeds->getCount(); i++)
 			{
 				colorTmp = color + rainbowEachColorDiff * i;
@@ -313,41 +316,47 @@ void LedEffects::rainbowPairs()
 		}
 }
 
-void LedEffects::setRainbowEachPairCoefficient(uint16_t coef)
+
+
+void LedEffects::pairsOnSlowDown()
 {
-	rnbPairColorCoef = coef;
-	for(int i = 0; i<pairsOfLeds->getCount(); i++)
+	static uint8_t currentPair { 0 };
+	static uint16_t delay { 10 };
+	static uint16_t color { 0 };
+	static bool up { true };
+	static uint8_t bright { effBright };
+	if(delay){ delay--; return; }
+
+	if(up)
 	{
-		pairsOfLeds->getPair(i)->setColor(coef*i);
-	}
-}
 
-void LedEffects::rainbowEachPair()
-{
-	//time - скорость изменения цвета
-		//hsv 0 -360
-		//rgb 0 - 767
-		static unsigned short int rnbwCntr = 0;
-
-		unsigned short int maxColor = 1535;
-
-		rnbwCntr++;
-		if(rnbwCntr>ledSpeed)
+		currentPair++;
+		delay = 10;
+		if(currentPair == pairsOfLeds->getCount())
 		{
-
-			for(int i = 0; i<pairsOfLeds->getCount(); i++)
-			{
-				uint16_t color = pairsOfLeds->getPair(i)->getColor();
-				if(color>=maxColor)color = 0;
-				pairsOfLeds->getPair(i)->setColor(color);
-
-			}
-
-
-
-			rnbwCntr = 0;
-
-			pairsOfLeds->refresh();
+			up = false;
+			currentPair = 0;
+			delay = 100;
 		}
-}
+		pairsOfLeds->getPair(currentPair)->setBright(effBright);
+		if(color>=1535){color = 0;}
+		color = color + 29 * currentPair;
 
+	    pairsOfLeds->getPair(currentPair)->setColor(color);
+	}
+	else
+	{
+		bright--;
+		pairsOfLeds->setBright(bright);
+		if(bright == 0)
+		{
+			bright = effBright;
+			up = true;
+
+		}
+		delay = 10;
+	}
+
+	pairsOfLeds->refresh();
+
+}

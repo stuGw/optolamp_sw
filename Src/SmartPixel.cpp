@@ -33,6 +33,9 @@ void SmartPixel::convertToCurrColorHD(uint16_t val)
 	if((val>=768)&&(val<1024)){red =0; green = 1023-val; blue = 255;}
 	if((val>=1024)&&(val<1280)){red =val-1024; green = 0; blue = 255;}
 	if((val>=1280)&&(val<1536)){red = 255; green = 0; blue = 1535-val;}
+	if(val == coldWhiteColor){ red = 230; green = 230; blue = 255;};
+	if(val == whiteColor){ red = 255; green = 240; blue = 150;};
+	if(val == warmWhiteColor){ red = 255; green = 200; blue = 80;};
 
 }
 /*if(((char)((rgb[led].R*rgbBright[rgb[led].BR])/1000)&mask) == mask)

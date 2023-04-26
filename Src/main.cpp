@@ -216,13 +216,30 @@ bool getConfiguration(CONFIG* conf, Button *buttonR, Button *buttonL)
 		if(conf->parameters.effectMode)
 		{
 			conf->parameters.effectNo++;
-			if(conf->parameters.effectNo>10)conf->parameters.effectNo = 1;
+			if(conf->parameters.effectNo>LedEffects::countEffects)conf->parameters.effectNo = 1;
 			conf->effectChanged = true;
 		}
 		else
 		{
-			conf->parameters.color+=50;
-			if(conf->parameters.color>1530)conf->parameters.color = 0;
+			static bool flagWhite { false };
+			if(!flagWhite)
+			{
+				conf->parameters.color+=50;
+				if(conf->parameters.color>1530)
+				{
+					flagWhite = true;
+					conf->parameters.color = SmartPixel::coldWhiteColor;
+				}
+			}
+			else
+			{
+				conf->parameters.color++;
+				if(conf->parameters.color>SmartPixel::warmWhiteColor)
+				{
+					flagWhite = false;
+					conf->parameters.color = 0;
+				}
+			}
 			conf->colorChanged = true;
 		}
 		changed = true;
@@ -358,12 +375,17 @@ int main(void)
 	LightSensor5528 lightSensor(1000000, &sensorADC, AnalogConverter::ADC_7);
 	CONFIG lampConfiguration;
 	ResistanceConverter RConverter;
-	SmartPixelStrip* ledstrip = new SmartPixelStrip(32,SmartPixelStrip::WS2812, SmartPixelStrip::ONCE_MODE, startWsTransfer);
-	LedPairs pairs(ledstrip);
-	hwLA = ledstrip->getHwAdress();
+	uint32_t* address;
+
 	initializeHw();
 	initializeModules();
-	uint32_t* address;
+
+	SmartPixelStrip* ledstrip = new SmartPixelStrip(32,SmartPixelStrip::WS2812, SmartPixelStrip::ONCE_MODE, startWsTransfer);
+	hwLA = ledstrip->getHwAdress();
+	LedPairs pairs(ledstrip);
+	initializeDMA(address, ledstrip->hwSize());
+	initWSTimer();
+	// = ledstrip->getHwAdress();
 	LOG->DEBG("Initialize memory iface, size = ",sizeOfEEPROM);
 	mem.setInterfaceRead(readI2C1);
 	mem.setInterfaceWrite(writeI2C1);
@@ -375,8 +397,7 @@ int main(void)
 	crc.init(0x00000000, CRCHw::POLYSIZE_8, 0x31, true, CRCHw::BY_WORD);
 
 	LOG->DEBG("Initialize ws DMA & Timer");
-	initializeDMA(address, ledstrip->hwSize());
-	initWSTimer();
+
 
 
 
@@ -432,7 +453,11 @@ int main(void)
 			ledstrip->setColor(lampConfiguration.parameters.color);
 		}
 
-		ledstrip->refresh();
+
+		configureLedPairs(&pairs);
+//ledstrip->setColor(1000);
+//ledstrip->setBright(5);
+	//	ledstrip->refresh();
 
 	//	startWsTransfer();
 		LOG->DEBG(version);

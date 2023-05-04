@@ -363,7 +363,7 @@ inline void configureLedPairs(LedPairs* pairs)
 
 
 uint32_t paramsEEPROMAddress { 0x00 };
-uint16_t sizeOfEEPROM { 32768 };
+uint16_t sizeOfEEPROM { 1024 };
 uint8_t addressOfEEPROM { 0xA0 };
 
 

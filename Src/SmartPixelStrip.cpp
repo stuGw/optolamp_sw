@@ -7,7 +7,7 @@
 
 #include <SmartPixelStrip.h>
 
-SmartPixelStrip::SmartPixelStrip(uint32_t count, PixelStripType type, PixelStripMode mode, void (*transferFunction)(uint32_t))
+SmartPixelStrip::SmartPixelStrip(uint32_t count, PixelStripType type, PixelStripMode mode, void (*transferFunction)(uint32_t), bool HSVMode)
 {
 	if(!count) return;
 	pixelCount = count;
@@ -19,7 +19,7 @@ SmartPixelStrip::SmartPixelStrip(uint32_t count, PixelStripType type, PixelStrip
 		case WS2812:
 		{
 			leds = new SmartPixel[pixelCount];
-			initializeWS2812Strip();
+			initializeWS2812Strip(HSVMode);
 
 			break;
 		}
@@ -34,7 +34,7 @@ SmartPixelStrip::SmartPixelStrip(uint32_t count, PixelStripType type, PixelStrip
 
 }
 
-void SmartPixelStrip::initializeWS2812Strip()
+void SmartPixelStrip::initializeWS2812Strip(bool inHSVMode)
 {
 	ledCountColors = RGB_COUNT_COLORS;
     packet = new uint8_t[pixelCount*ledCountColors*HW_BYTES_PER_COLOR + resetBytes];
@@ -42,6 +42,7 @@ void SmartPixelStrip::initializeWS2812Strip()
     for(int i = 0; i < pixelCount; i++)
     {
         leds[i].setHwPtr(&(packet[resetBytes + i*ledCountColors*HW_BYTES_PER_COLOR]));
+        leds[i].setHSVOn(inHSVMode);
     }
 
     for(int i = 0; i<(pixelCount*ledCountColors*HW_BYTES_PER_COLOR + resetBytes); i++)
@@ -80,7 +81,24 @@ void SmartPixelStrip::setBright(uint8_t bright)
 	}
 
 }
+void SmartPixelStrip::setValue(uint8_t bright)
+{
+	for(int i = 0; i<pixelCount; i++)
+	{
+			leds[i].setValue(bright);
+	}
 
+}
+
+
+void SmartPixelStrip::incrementHUE()
+{
+	for(int i = 0; i<pixelCount; i++)
+	{
+			leds[i].incrementHUE();
+	}
+
+}
 void SmartPixelStrip::setColor(uint16_t color)
 {
 	for(int i = 0; i<pixelCount; i++)

@@ -22,10 +22,20 @@ public:
 	void setColor(uint16_t color);
 	void setBright(uint8_t bright);
 	void setBright(uint8_t brightL, uint8_t brightR);
+	void setHSV(uint16_t hue, uint8_t sat, uint8_t val);
+	void setHue(uint16_t hue){ledLeft->setHUE(hue); ledRight->setHUE(hue);}
+	void setHue(uint16_t hueL, uint16_t hueR){ ledLeft->setHUE(hueL); ledRight->setHUE(hueR); }
+	void setValue(uint8_t bright){ledLeft->setValue(bright); ledRight->setValue(bright);}
+		void setValue(uint8_t brightL, uint8_t brightR){ledLeft->setValue(brightL); ledRight->setValue(brightR); }
+		void incrementValue(){ledLeft->incrementValue(); ledRight->incrementValue(); }
+		void incrementValue(uint8_t maxValue){ledLeft->incrementValue(maxValue); ledRight->incrementValue(maxValue); }
+		void decrementValue(){ledLeft->decrementValue(); ledRight->decrementValue(); }
+
 	inline uint16_t getColor(){ return ledLeft->getColor(); }
 	uint16_t getColorL(){ return ledLeft->getColor(); }
 	uint16_t getColorR(){ return ledRight->getColor(); }
 	void refresh();
+	void refreshHSV();
 	virtual ~LedPair();
 };
 

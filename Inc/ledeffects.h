@@ -72,6 +72,9 @@ public:
 
 	void play();
 	void rainbowAll();
+	void rainbowAllHSV();
+	void runPairsHSV();
+
 	void rainbowEach();
 	void fireAll();
 	void fireEach();
@@ -80,8 +83,14 @@ public:
 
 	void runPairs();
 	void runPairsSoft();
+	void runPairsSoftHSV();
 	void rainbowPairs();
 	void pairsOnSlowDown();
+
+
+	void prepareEachHSV();
+	void prepareAllHSV();
+	void preparePairHSV();
 };
 
 #endif /* LEDEFFECTS_H_ */

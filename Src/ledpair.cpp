@@ -38,6 +38,12 @@ void LedPair::setColor(uint8_t rl, uint8_t gl, uint8_t bl, uint8_t rr, uint8_t g
 	ledRight->setColor(rr, gr, br);
 }
 
+void LedPair::setHSV(uint16_t hue, uint8_t sat, uint8_t val)
+{
+	ledLeft->setHSV(hue, sat, val);
+	ledRight->setHSV(hue, sat, val);
+}
+
 void LedPair::setBright(uint8_t bright)
 {
 	ledLeft->setBright(bright);
@@ -62,7 +68,11 @@ void LedPair::setColor(uint16_t color)
 	ledLeft->setColor(color);
 	ledRight->setColor(color);
 }
-
+void LedPair::refreshHSV()
+{
+	ledLeft->hwRefreshHSV();
+	ledRight->hwRefreshHSV();
+}
 void LedPair::refresh()
 {
 	ledLeft->hwRefresh();

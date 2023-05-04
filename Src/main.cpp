@@ -302,63 +302,65 @@ void autoBrightLamp(CONFIG* lampConfiguration, LedEffects* leds, LightSensor5528
 		}
 	}
 }
-
+//0-15
+//1-20
+//2-12
+//3-17
+//4-19
+//5-21
+//6-25
+//7-29
+//8-28
+//9-23
+//10-18
+//11-27
+////////12-2
+//13-30
+//14-24
+////////15-0
+//16-26
+////////17-3
+//22-31
 inline void configureLedPairs(LedPairs* pairs)
 {
-	pairs->setPair(0, 0, 10);
-			pairs->setPair(1, 1, 15);
-			pairs->setPair(2, 2, 17);
-			pairs->setPair(3, 3, 19);
+	pairs->setPair(0, 0, 15);
+			pairs->setPair(1, 1, 20);
+			pairs->setPair(2, 2, 12);
+			pairs->setPair(3, 3, 17);
 
-			pairs->setPair(4, 4, 23);
-			pairs->setPair(5, 5, 27);
-			pairs->setPair(6, 6, 26);
-			pairs->setPair(7, 7, 21);
+			pairs->setPair(4, 4, 19);
+			pairs->setPair(5, 5, 21);
+			pairs->setPair(6, 6, 25);
+			pairs->setPair(7, 7, 29);
 
-			pairs->setPair(8, 8, 16);
-			pairs->setPair(9, 9, 25);
-			pairs->setPair(10, 11, 28);
-			pairs->setPair(11, 12, 22);
+			pairs->setPair(8, 8, 28);
+			pairs->setPair(9, 9, 23);
+			pairs->setPair(10, 10, 18);
+			pairs->setPair(11, 11, 27);
 
-			pairs->setPair(12, 13, 31);
+			pairs->setPair(12, 13, 30);
 			pairs->setPair(13, 14, 24);
-			pairs->setPair(14, 18, 30);
-			pairs->setPair(15, 20, 29);
+			pairs->setPair(14, 16, 26);
+			pairs->setPair(15, 22, 31);
 
-			pairs->getPair(0)->setBright(21);
-			pairs->getPair(0)->setColor(255,0,0);
-			pairs->getPair(0)->refresh();
 
-			pairs->getPair(1)->setBright(21);
-			pairs->getPair(1)->setColor(0,255,0);
-			pairs->getPair(1)->refresh();
+			//pairs->getPair(0)->setBright(21);
+			//pairs->getPair(0)->setColor(255);
 
-			pairs->getPair(2)->setBright(21);
-			pairs->getPair(2)->setColor(0,0,255);
-			pairs->getPair(2)->refresh();
+			//pairs->getPair(1)->setBright(21);
+			//pairs->getPair(1)->setColor(2);
 
-			pairs->getPair(3)->setBright(21);
-			pairs->getPair(3)->setColor(255,255,0);
-			pairs->getPair(3)->refresh();
+			//pairs->refresh();
+
+			for(int i = 0; i<pairs->getCount(); i++)
+			{
+				pairs->getPair(i)->setHSV(0, 100, 100);
+			}
 
 
 
-			pairs->getPair(0)->setColor(255, 0, 0,  0, 128, 0);
-			pairs->getPair(1)->setColor(0, 255, 0,  0, 128, 0);
-			pairs->getPair(2)->setColor(0, 0, 255,  0, 128, 0);
-			pairs->getPair(3)->setColor(0, 0, 255,  0, 255, 0);
-			pairs->getPair(4)->setColor(255, 0, 0,  255, 0, 0);
-			pairs->getPair(5)->setColor(0, 0, 255,  255, 0, 0);
-			pairs->getPair(6)->setColor(0, 255, 0,  255, 0, 0);
-			pairs->getPair(7)->setColor(0, 0, 255,  0, 0, 255);
-			pairs->getPair(8)->setColor(255, 0, 0,  0, 0, 255);
-			pairs->getPair(9)->setColor(0, 255, 0,  0, 0, 255);
-			pairs->getPair(10)->setColor(255, 0, 0,  255, 0, 0);
-			pairs->getPair(11)->setColor(0, 0, 255,  0, 255, 255);
-			pairs->getPair(12)->setColor(255, 0, 0,  255, 255, 0);
-			pairs->getPair(13)->setColor(0, 0, 255,  0, 0, 255);
-			pairs->getPair(14)->setColor(255, 0, 0,  0, 128, 233);
-			pairs->getPair(15)->setColor(0, 255, 0,  0, 128, 0);
+
+			pairs->refresh();
 }
 
 
@@ -380,16 +382,16 @@ int main(void)
 	initializeHw();
 	initializeModules();
 
-	SmartPixelStrip* ledstrip = new SmartPixelStrip(32,SmartPixelStrip::WS2812, SmartPixelStrip::ONCE_MODE, startWsTransfer);
+	SmartPixelStrip* ledstrip = new SmartPixelStrip(32,SmartPixelStrip::WS2812, SmartPixelStrip::ONCE_MODE, startWsTransfer, true);
 	hwLA = ledstrip->getHwAdress();
 	LedPairs pairs(ledstrip);
 	initializeDMA(address, ledstrip->hwSize());
 	initWSTimer();
-	// = ledstrip->getHwAdress();
+
 	LOG->DEBG("Initialize memory iface, size = ",sizeOfEEPROM);
 	mem.setInterfaceRead(readI2C1);
 	mem.setInterfaceWrite(writeI2C1);
-//	i2cFindDevices();
+
 
 	mem.setMemoryParams(sizeOfEEPROM, addressOfEEPROM);
 
@@ -416,8 +418,7 @@ int main(void)
 			uint8_t calculatedCrc = crc.calcCRC(reinterpret_cast<uint8_t*>(&lampConfiguration.parameters), sizeof(LampParams)-1);
 			if(lampConfiguration.parameters.crc!= calculatedCrc)
 			{
-				///motoMinsMem.motoMinutes = 0;
-				//motoMinsMem.crc = crc->calcCRC(reinterpret_cast<uint8_t*>(&motoMinsMem), sizeof(MotoMinsMemHeader)-1);
+
 				LOG->DEBG("Error reading from mem! set 0!");
 				lampConfiguration.parameters.autoBright = true;
 				lampConfiguration.parameters.bright =  1;
@@ -425,7 +426,7 @@ int main(void)
 				lampConfiguration.parameters.effectNo = 1;
 				lampConfiguration.parameters.effectMode =  0;
 
-				//mem.writeArray(motoMinsAddress, reinterpret_cast<uint8_t*>(&motoMinsMem), sizeof(MotoMinsMemHeader));
+
 			}
 			else
 			{
@@ -437,6 +438,7 @@ int main(void)
 				LOG->DEBG("EffetNo: ", lampConfiguration.parameters.effectNo);
 			}
 
+		configureLedPairs(&pairs);
 
 		LedEffects ledEffect(&pairs);
 		ledEffect.setSpeed(2500);
@@ -454,14 +456,9 @@ int main(void)
 		}
 
 
-		configureLedPairs(&pairs);
-//ledstrip->setColor(1000);
-//ledstrip->setBright(5);
-	//	ledstrip->refresh();
 
-	//	startWsTransfer();
+
 		LOG->DEBG(version);
-	//	LOG->DEBG("WHY0YOU1DONT2WANT3PRINT4NUMBERS5NAORMAL6?");
 
     /* Loop forever */
 
@@ -471,10 +468,8 @@ int main(void)
 		if(getConfiguration(&lampConfiguration, &bRight, &bLeft))
 		{
 			configureLamp(&lampConfiguration, &ledEffect);
-
 			lampConfiguration.parameters.crc = crc.calcCRC(reinterpret_cast<uint8_t*>(&lampConfiguration.parameters), sizeof(LampParams)-1);
 		    mem.writeArray(paramsEEPROMAddress, reinterpret_cast<uint8_t*>(&lampConfiguration.parameters), sizeof(LampParams));
-
 		}
 
 		autoBrightLamp(&lampConfiguration, &ledEffect, &lightSensor);

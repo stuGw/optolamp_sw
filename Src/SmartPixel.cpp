@@ -16,13 +16,14 @@ uint16_t constexpr SmartPixel::rgbBright[];
 
 
 
-SmartPixel::SmartPixel(uint8_t* hw, uint8_t r, uint8_t g, uint8_t b, uint8_t br) {
+SmartPixel::SmartPixel(uint8_t* hw, uint8_t r, uint8_t g, uint8_t b, uint8_t br, bool hsv) {
 	// TODO Auto-generated constructor stub
 	red = r;
 	green = g;
 	blue = b;
 	bright = br;
 	hwPtr = hw;
+	HSVMode = hsv;
 }
 
 void SmartPixel::convertToCurrColorHD(uint16_t val)
@@ -58,6 +59,11 @@ uint8_t SmartPixel::getHwColorValueBlue()
 
 void SmartPixel::hwRefresh()
 {
+	if(HSVMode){ refreshHSVFF(); hwRefreshHSV(); } else hwRefreshRGB();
+}
+
+void SmartPixel::hwRefreshRGB()
+{
 	uint8_t r, g, b, i { 0 };
 	r = getHwColorValueRed();
 	b = getHwColorValueBlue();
@@ -69,6 +75,18 @@ void SmartPixel::hwRefresh()
 		if(b&mask) hwPtr[blueOffset + i] = HW_1; else hwPtr[blueOffset + i] = HW_0;
 		i++;
 	}
+}
+
+void SmartPixel::hwRefreshHSV()
+{
+	uint8_t i { 0 };
+	for( uint8_t mask = 0x80; mask > 0; mask = mask >> 1)
+		{
+			if(red&mask) hwPtr[redOffset + i] = HW_1; else hwPtr[redOffset + i] = HW_0;
+			if(green&mask) hwPtr[i] = HW_1; else hwPtr[i] = HW_0;
+			if(blue&mask) hwPtr[blueOffset + i] = HW_1; else hwPtr[blueOffset + i] = HW_0;
+			i++;
+		}
 }
 
 uint8_t SmartPixelW::getHwColorValueWhite()

@@ -8,6 +8,7 @@
 #include <ledeffects.h>
 
 constexpr uint8_t LedEffects::ledFArrBBr[21+1][62];
+constexpr uint8_t LedEffects::ledFireValueArr[62*2];
 constexpr uint8_t LedEffects::ledFArrC[];
 
 
@@ -31,14 +32,12 @@ void LedEffects::play()
 			case Effects::NO_EFFECT: break;
 			case Effects::RAINBOW_ALL: { rainbowAllHSV(); break; }
 			case Effects::RAINBOW_EACH: { rainbowAllHSV();  break; }
-			//case Effects::FIRE_ALL: { fireAll(); break; }
-			//case Effects::FIRE_EACH: { fireEach(); break; }
+			case Effects::FIRE_ALL: { fireAll(); break; }
+			case Effects::FIRE_EACH: { fireEach(); break; }
 			case Effects::RAINBOW_PAIRS: { rainbowAllHSV(); break; }
-			case Effects::RUN_PIXELS: { /*runPixels();*/ break; }
 			case Effects::RUN_PAIRS: { runPairsHSV(); break; }
-		//	case Effects::RUN_PIXELS_SOFT: { runPixelsSoft(); break; }
 			case Effects::RUN_PAIRS_SOFT: { runPairsSoftHSV(); break; }
-			case Effects::PAIRS_ON_SLOW_DOWN: { /*pairsOnSlowDown();*/ break; }
+			case Effects::PAIRS_ON_SLOW_DOWN: { pairsOnSlowDown(); break; }
 		}
 
 
@@ -50,18 +49,16 @@ void LedEffects::setEffect(Effects eff)
 	switch (effect)
 		{
 			case Effects::NO_EFFECT: break;
-			case Effects::RAINBOW_ALL: { setSpeed(2500); prepareAllHSV();/*pairsOfLeds->setBright(effBright); leds->setBright(effBright); */break; }
-			case Effects::RAINBOW_EACH: {setSpeed(2500); prepareEachHSV();  break; }
-			case Effects::FIRE_ALL: {  break; }
-			case Effects::FIRE_EACH: {  break; }
-			case Effects::RAINBOW_PAIRS: { setSpeed(2500); preparePairHSV(); break; }
-			case Effects::RUN_PIXELS: {  break; }
-			case Effects::RUN_PAIRS: { setSpeed(5000); pairsOfLeds->getStripPtr()->setValue(0); break; }
-			case Effects::RUN_PIXELS_SOFT: {  break; }
-			case Effects::RUN_PAIRS_SOFT: { setSpeed(100); pairsOfLeds->getStripPtr()->setValue(0); pairsOfLeds->getPair(0)->setValue(100); break; }
-			case Effects::PAIRS_ON_SLOW_DOWN: { /*pairsOfLeds->setBright(effBright);*/ break; }
+			case Effects::RAINBOW_ALL: { setSpeed(5); prepareAllHSV();/*pairsOfLeds->setBright(effBright); leds->setBright(effBright); */break; }
+			case Effects::RAINBOW_EACH: {setSpeed(5); prepareEachHSV();  break; }
+			case Effects::FIRE_ALL: {setSpeed(5);  break; }
+			case Effects::FIRE_EACH: {setSpeed(5);  break; }
+			case Effects::RAINBOW_PAIRS: { setSpeed(5);; preparePairHSV(); break; }
+			case Effects::RUN_PAIRS: { setSpeed(10); pairsOfLeds->getStripPtr()->setValue(0); break; }
+			case Effects::RUN_PAIRS_SOFT: { setSpeed(10); pairsOfLeds->getStripPtr()->setValue(0); pairsOfLeds->getPair(0)->setValue(effBright*5); break; }
+			case Effects::PAIRS_ON_SLOW_DOWN: {setSpeed(5); pairsOfLeds->getStripPtr()->setValue(0); break; }
 		}
-	ledSpeed = 5;
+	//ledSpeed = 5;
 }
 void LedEffects::rainbowAllHSV()
 {
@@ -69,11 +66,8 @@ void LedEffects::rainbowAllHSV()
 	rnbwCntr++;
 	if(rnbwCntr>ledSpeed)
 	{
-
 		leds->incrementHUE();
 		leds->setValue(effBright*5);
-		//leds->setBright(effBright);
-
 		rnbwCntr = 0;
 		leds->refresh();
 	}
@@ -182,18 +176,18 @@ void LedEffects::fireAll()
 	static unsigned short int fireCntr = 0;
 		static unsigned short int i = 0;
 		uint8_t bright { 0 };
-		if(effBright>8) bright = 8; else bright = effBright;
+		if(effBright>5) bright = 1; else bright = 6 - effBright;
 		if(fireCntr>=ledSpeed)
 		{
 
 			for(int j = 0; j< leds->count(); j++)
 			{
-				leds->getLed(j)->setBright(ledFArrBBr[bright][i]);
-				leds->getLed(j)->setColor(0xff,0x36,0x05);
+				leds->getLed(j)->setValue(ledFireValueArr[i]/bright);
+				leds->getLed(j)->setHUE(8);//setColor(0xff,0x36,0x05);
 			}
 
 			i++;
-			if(i>=FR_CF_LED_CNT)i = 0;
+			if(i>=FR_CF_LED_CNT*2)i = 0;
 
 			fireCntr = 0;
 			leds->refresh();
@@ -205,17 +199,18 @@ void LedEffects::fireEach()
 {
 
 	static unsigned short int fireCntr = 0;
-	static  uint8_t coefs[32] = { 0, 12, 7, 9, 34, 22, 45, 10, 17, 3, 55, 1, 27, 11, 5, 44, 19,
-			31, 35, 13, 24, 6, 18, 4, 49, 33, 30, 20, 40, 50, 29, 8};
+	static  uint8_t coefs[32] = { 0, 12, 7, 9, 34, 22, 29, 10, 17, 3, 33, 1, 27, 11, 5, 44, 19,
+			31, 35, 13, 24, 6, 18, 4, 19, 33, 30, 20, 40, 50, 29, 8};
 	uint8_t bright { 0 };
-			if(effBright>8) bright = 8; else bright = effBright;
+	if(effBright>5) bright = 1; else bright = 6 - effBright;
 	if(fireCntr>=ledSpeed)
 	{
 
 		for(int j = 0; j< leds->count(); j++)
 		{
-			leds->getLed(j)->setBright(ledFArrBBr[bright][coefs[j]]);
-			leds->getLed(j)->setColor(0xff-ledFArrC[coefs[j]],0x22,0x03-ledFArrC[coefs[j]]/10);
+			leds->getLed(j)->setValue(ledFireValueArr[coefs[j]]/bright);
+			//leds->getLed(j)->setHUE(8 + coefs[j]);
+			leds->getLed(j)->setHUE(18 - ledFArrC[coefs[j]]);
 			coefs[j]++;
 			if(coefs[j]>=FR_CF_LED_CNT) coefs[j] = 0;
 		}
@@ -297,37 +292,33 @@ void LedEffects::runPairsSoftHSV()
 	pairsOfLeds->setBright(0);
 	volatile static unsigned short int rnbwCntr = 0;
 	static uint32_t currentPair { 0 }, previousPair { pairsOfLeds->getCount()-1 };
-	static bool sign { true };
+
 	static uint8_t brightCurrent = 0;
-	static uint8_t brightPrevious = effBright;
-	static uint8_t brightAllSaved = effBright;
+	static uint8_t effBrightSaved { effBright };
 
-
-	if(brightAllSaved!=effBright)
-	{
-		brightCurrent = 0;
-		brightPrevious = effBright;
-		brightAllSaved = effBright;
-	}
 	rnbwCntr++;
+
+	if(effBrightSaved!=effBright)
+	{
+		rnbwCntr = 0;
+		currentPair = 0;
+		previousPair = pairsOfLeds->getCount()-1;
+		brightCurrent = 0;
+		effBrightSaved = effBright;
+		pairsOfLeds->getStripPtr()->setValue(0);
+		pairsOfLeds->getPair(previousPair)->setValue(effBrightSaved*5);
+	}
 
 	if(rnbwCntr>ledSpeed)
 	{
 		pairsOfLeds->getPair(previousPair)->decrementValue();
-		pairsOfLeds->getPair(currentPair)->incrementValue(effBright*4);
+		pairsOfLeds->getPair(currentPair)->incrementValue(effBrightSaved*5);
 
-	///	pairsOfLeds->getPair(currentPair)->setBright(brightCurrent);
-	///	pairsOfLeds->getPair(previousPair)->setBright(brightPrevious);
-
-	///	brightCurrent++;
-	///	brightPrevious--;
-
-		if(brightCurrent == effBright*5)
+		if(brightCurrent == effBrightSaved*5)
 		{
 			previousPair = currentPair;
 			if(currentPair<pairsOfLeds->getCount()-1) currentPair++; else currentPair = 0;
-
-			brightPrevious = effBright;
+			brightCurrent = 0;
 
 		}
 
@@ -407,11 +398,23 @@ void LedEffects::pairsOnSlowDown()
 {
 	static uint8_t currentPair { 0 };
 	static uint16_t delay { 10 };
-	static uint16_t color { 0 };
+	static uint8_t effBrightSaved { effBright };
+	//static bool brightChanged { false };
 	static bool up { true };
-	static uint8_t bright { effBright };
-	if(delay){ delay--; return; }
+	static uint8_t bright { effBright*5 };
 
+	if(effBrightSaved!=effBright)
+	{
+		//brightChanged = true;
+		delay = 10;
+		bright = effBright*5;
+		up = true;
+		currentPair = 0;
+		effBrightSaved = effBright;
+		pairsOfLeds->getStripPtr()->setValue(0);
+	}
+
+	if(delay){ delay--; return; }
 	if(up)
 	{
 
@@ -423,23 +426,21 @@ void LedEffects::pairsOnSlowDown()
 			currentPair = 0;
 			delay = 100;
 		}
-		pairsOfLeds->getPair(currentPair)->setBright(effBright);
-		if(color>=1535){color = 0;}
-		color = color + 29 * currentPair;
+		pairsOfLeds->getPair(currentPair)->setValue(effBrightSaved*5);
 
-	    pairsOfLeds->getPair(currentPair)->setColor(color);
 	}
 	else
 	{
 		bright--;
-		pairsOfLeds->setBright(bright);
+		pairsOfLeds->getStripPtr()->decrementValue();//setBright(bright);
 		if(bright == 0)
 		{
-			bright = effBright;
+	//		if(brightChanged){ brightChanged = false; effBrightSaved = effBright; }
+			bright = effBrightSaved*5;
 			up = true;
 
 		}
-		delay = 10;
+		delay = 5;
 	}
 
 	pairsOfLeds->refresh();

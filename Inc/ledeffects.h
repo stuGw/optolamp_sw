@@ -21,9 +21,19 @@ class LedEffects {
 
 	static constexpr uint8_t FR_CF_LED_CNT { 62 };
 
+	static constexpr uint8_t ledFireValueArr[FR_CF_LED_CNT*2] = {50,55,60,70,80,85,90,85,80,75,70,65,60,55,50,55,60,50,40,45,50,40,30,50,70,65,60,55,50,45,40,55,70,55,40,45,50,45,40,60,80,70,60,55,50,
+			45,40,55,70,75,80,70,60,65,70,60,50,60,70,55,40,45,50,55,60,55,50,55,60,70,80,65,50,45,40,65,90,75,60,50,40,45,50,60,70,65,60,65,70,60,50,55,60,55,50,70,90,85,80,75,70,65,60,55,50,70,90,65,
+			40,45,50,55,60,65,70,65,60,65,70,60,50,45,40,45};
+		//														{25,27,30,35,40,43,45,42,40,37,35,32,30,27,25,27,30,25,20,23,25,20,15,25,35,33,30,27,25,22,20,27,35,23,20,45,50,45,40,60,80,70,60,55,50,
+	//		45,40,55,70,75,80,70,60,65,70,60,50,60,70,55,40,45,50,55,60,55,50,55,60,70,80,65,50,45,40,65,90,75,60,50,40,45,50,60,70,65,60,65,70,60,50,55,60,55,50,70,90,85,80,75,70,65,60,55,50,70,90,65,
+		//	40,45,50,55,60,65,70,65,60,65,70,60,50,45,40,45};
+
+
 	static constexpr uint8_t ledFArrBBr[21+1][FR_CF_LED_CNT] =
 	{
-		{4,5,6,5,6,4,5,4,5,3,4,3,6,5,4,3,5,3,4,3,6,5,4,3,5,6,5,6,4,5,3,
+
+
+			{4,5,6,5,6,4,5,4,5,3,4,3,6,5,4,3,5,3,4,3,6,5,4,3,5,6,5,6,4,5,3,
 		 4,5,6,5,6,4,3,6,5,3,4,6,5,6,4,5,4,6,5,4,5,4,6,3,4,5,6,5,4,6,3},
 
 	{4,5,6,5,6,4,5,4,5,3,4,3,6,5,4,3,5,3,4,3,6,5,4,3,5,6,5,6,4,5,3,
@@ -60,9 +70,9 @@ public:
 	LedEffects(LedPairs* pairs);
 	virtual ~LedEffects();
 	inline SmartPixelStrip* getLedsStrip() { return leds; }
-	static constexpr uint8_t countEffects{ 10 };
-	enum Effects : uint8_t { NO_EFFECT = 0x00, RAINBOW_ALL = 0x01, RAINBOW_EACH = 0x02, FIRE_ALL = 0x03, FIRE_EACH = 0x04,   RUN_PIXELS = 0x05,  RUN_PIXELS_SOFT = 0x06, RAINBOW_PAIRS = 0x07,
-		 RUN_PAIRS = 0x08,  RUN_PAIRS_SOFT = 0x09, PAIRS_ON_SLOW_DOWN = 0x0a} effect { NO_EFFECT };
+	static constexpr uint8_t countEffects{ 8 };
+	enum Effects : uint8_t { NO_EFFECT = 0x00, RAINBOW_ALL = 0x01, RAINBOW_EACH = 0x02, FIRE_ALL = 0x03, FIRE_EACH = 0x04, RAINBOW_PAIRS = 0x05,
+		 RUN_PAIRS = 0x06,  RUN_PAIRS_SOFT = 0x07, PAIRS_ON_SLOW_DOWN = 0x08} effect { NO_EFFECT };
 
 	void setEffect(Effects eff);//{ ledSpeed = 5; effect = eff; }
 	void setEffectBright(uint8_t bright){ effBright = bright; }

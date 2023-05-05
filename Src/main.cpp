@@ -204,8 +204,17 @@ bool getConfiguration(CONFIG* conf, Button *buttonR, Button *buttonL)
 	{
 		if(!conf->parameters.autoBright)
 		{
-			conf->parameters.bright+=2;
-			if(conf->parameters.bright > 21) conf->parameters.bright = 1;
+			if((conf->parameters.effectNo == LedEffects::FIRE_ALL) || (conf->parameters.effectNo == LedEffects::FIRE_EACH))
+			{
+				conf->parameters.bright+=1;
+				if(conf->parameters.bright > 5) conf->parameters.bright = 1;
+			}
+			else
+			{
+				conf->parameters.bright+=2;
+
+				if(conf->parameters.bright > 21) conf->parameters.bright = 1;
+			}
 			conf->brightChanged = true;
 			changed = true;
 		}
@@ -221,25 +230,14 @@ bool getConfiguration(CONFIG* conf, Button *buttonR, Button *buttonL)
 		}
 		else
 		{
-			static bool flagWhite { false };
-			if(!flagWhite)
+
+			conf->parameters.color+=10;
+			if(conf->parameters.color>360)
 			{
-				conf->parameters.color+=50;
-				if(conf->parameters.color>1530)
-				{
-					flagWhite = true;
-					conf->parameters.color = SmartPixel::coldWhiteColor;
-				}
+
+				conf->parameters.color = 0;
 			}
-			else
-			{
-				conf->parameters.color++;
-				if(conf->parameters.color>SmartPixel::warmWhiteColor)
-				{
-					flagWhite = false;
-					conf->parameters.color = 0;
-				}
-			}
+
 			conf->colorChanged = true;
 		}
 		changed = true;
@@ -251,7 +249,7 @@ void configureLamp(CONFIG* lampConfiguration, LedEffects* leds)
 {
 	if(lampConfiguration->brightChanged)
 		{
-			if(lampConfiguration->parameters.effectMode)leds->setEffectBright(lampConfiguration->parameters.bright); else { leds->getLedsStrip()->setBright(lampConfiguration->parameters.bright); };
+			if(lampConfiguration->parameters.effectMode)leds->setEffectBright(lampConfiguration->parameters.bright); else { leds->getLedsStrip()->setValue(lampConfiguration->parameters.bright*5); };
 			lampConfiguration->brightChanged = false;
 			LOG->DEBG("Bright changed! - ", lampConfiguration->parameters.bright);
 
@@ -261,7 +259,8 @@ void configureLamp(CONFIG* lampConfiguration, LedEffects* leds)
 		//color/effect
 		if(lampConfiguration->colorChanged)
 		{
-			leds->getLedsStrip()->setColor(lampConfiguration->parameters.color);
+			leds->getLedsStrip()->setHUE(lampConfiguration->parameters.color);
+			//leds->getLedsStrip()->setColor(lampConfiguration->parameters.color);
 			lampConfiguration->colorChanged = false;
 			LOG->DEBG("Color changed! - ", lampConfiguration->parameters.color);
 
@@ -446,8 +445,9 @@ int main(void)
 
 		if(lampConfiguration.parameters.effectMode)
 		{
-			ledEffect.setEffect(static_cast<LedEffects::Effects>(lampConfiguration.parameters.effectNo));
 			ledEffect.setEffectBright(lampConfiguration.parameters.bright);
+			ledEffect.setEffect(static_cast<LedEffects::Effects>(lampConfiguration.parameters.effectNo));
+
 		}
 		else
 		{
@@ -461,10 +461,60 @@ int main(void)
 		LOG->DEBG(version);
 
     /* Loop forever */
+/*test*/
+		for(int i = 0; i<pairs.getCount(); i++)
+								{
+									pairs.getPair(i)->setHSV(0, 100, 0);
+								}
 
+								pairs.getPair(0)->setValue(0,100);
+								pairs.refresh();
+
+
+
+	/*endtest*/
+
+								uint32_t timer = 0;
+								uint16_t bright = 0;
+								uint16_t hue1  {0 };
+								uint16_t hue2 { 240 };
+								uint16_t tmp;
+								bool sign { true };
 		for(;;)
 	{
 
+			if(timer == 10000)
+			{
+				pairs.getPair(0)->setValue(bright,100-bright);
+				pairs.getStripPtr()->getLed(0)->setHUE(hue2);
+				pairs.getStripPtr()->getLed(15)->setHUE(hue1);
+												pairs.refresh();
+												if(sign)bright++;else bright--;
+
+												if(sign)
+												{
+
+													if(bright>100){tmp = hue1;
+													hue1 = hue2;
+													hue2 = tmp;bright = 100;sign = false;}
+												}
+												else
+												{
+													if(bright == 0){tmp = hue2;
+													hue2 = hue1;
+													hue1 = tmp;sign = true;}
+												}
+				timer = 0;
+			}
+			timer++;
+			/*test*/
+
+
+			/*endtest*/
+
+
+
+			/*
 		if(getConfiguration(&lampConfiguration, &bRight, &bLeft))
 		{
 			configureLamp(&lampConfiguration, &ledEffect);
@@ -479,6 +529,6 @@ int main(void)
 			flagSecund = 0;
 			if(lampConfiguration.parameters.effectMode)ledEffect.play();
 			flagButt = 0;
-		}
+		}*/
 	}
 }

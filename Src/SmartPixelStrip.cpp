@@ -90,6 +90,22 @@ void SmartPixelStrip::setValue(uint8_t bright)
 
 }
 
+void SmartPixelStrip::decrementValue()
+{
+	for(int i = 0; i<pixelCount; i++)
+	{
+			leds[i].decrementValue();
+	}
+
+}
+
+void SmartPixelStrip::setHUE(uint16_t hue)
+{
+	for(int i = 0; i<pixelCount; i++)
+		{
+				leds[i].setHUE(hue);
+		}
+}
 
 void SmartPixelStrip::incrementHUE()
 {

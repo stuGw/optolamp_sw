@@ -46,7 +46,9 @@ public:
     uint8_t sizePerPixel(){ return ledCountColors * HW_BYTES_PER_COLOR; }
     void setBright(uint8_t bright);
     void setValue(uint8_t bright);
+    void setHUE(uint16_t hue);
     void incrementHUE();
+    void decrementValue();
     void setColor(uint16_t color);
     uint32_t hwSize(){ return resetBytes + sizePerPixel() * pixelCount; }
 	virtual ~SmartPixelStrip();

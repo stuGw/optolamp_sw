@@ -462,59 +462,59 @@ int main(void)
 
     /* Loop forever */
 /*test*/
-		for(int i = 0; i<pairs.getCount(); i++)
-								{
-									pairs.getPair(i)->setHSV(0, 100, 0);
-								}
+	//	for(int i = 0; i<pairs.getCount(); i++)
+	//							{
+		//							pairs.getPair(i)->setHSV(0, 100, 0);
+			//					}
 
-								pairs.getPair(0)->setValue(0,100);
-								pairs.refresh();
+				//				pairs.getPair(0)->setValue(0,100);
+					//			pairs.refresh();
 
 
 
 	/*endtest*/
 
-								uint32_t timer = 0;
-								uint16_t bright = 0;
-								uint16_t hue1  {0 };
-								uint16_t hue2 { 240 };
-								uint16_t tmp;
-								bool sign { true };
+						//		uint32_t timer = 0;
+							//	uint16_t bright = 0;
+								//uint16_t hue1  {0 };
+								//uint16_t hue2 { 240 };
+								//bool side {false};
+								//bool sign { true };
 		for(;;)
 	{
 
-			if(timer == 10000)
+		/*	if(timer == 150000)
 			{
-				pairs.getPair(0)->setValue(bright,100-bright);
-				pairs.getStripPtr()->getLed(0)->setHUE(hue2);
-				pairs.getStripPtr()->getLed(15)->setHUE(hue1);
+				for(int i = 0; i<pairs.getCount(); i++)
+					{
+					pairs.getPair(i)->setValue(bright,10-bright);
+					pairs.getPair(i)->setHue(hue1,hue2);
+					}
 												pairs.refresh();
-												if(sign)bright++;else bright--;
+												if(sign){ bright++;}else { bright--;}
 
 												if(sign)
 												{
 
-													if(bright>100){tmp = hue1;
-													hue1 = hue2;
-													hue2 = tmp;bright = 100;sign = false;}
+													if(bright>10){
+													//	if(!hue2)hue2=240;else hue2 = 0;
+
+													bright = 10;sign = false;}
 												}
 												else
 												{
-													if(bright == 0){tmp = hue2;
-													hue2 = hue1;
-													hue1 = tmp;sign = true;}
+													if(bright == 0){
+													//	if(!hue1)hue1=240;else hue1 = 0;
+														sign = true;}
 												}
 				timer = 0;
 			}
 			timer++;
-			/*test*/
-
-
-			/*endtest*/
+		*/
 
 
 
-			/*
+
 		if(getConfiguration(&lampConfiguration, &bRight, &bLeft))
 		{
 			configureLamp(&lampConfiguration, &ledEffect);
@@ -529,6 +529,6 @@ int main(void)
 			flagSecund = 0;
 			if(lampConfiguration.parameters.effectMode)ledEffect.play();
 			flagButt = 0;
-		}*/
+		}
 	}
 }

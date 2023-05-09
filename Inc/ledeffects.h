@@ -70,9 +70,9 @@ public:
 	LedEffects(LedPairs* pairs);
 	virtual ~LedEffects();
 	inline SmartPixelStrip* getLedsStrip() { return leds; }
-	static constexpr uint8_t countEffects{ 8 };
+	static constexpr uint8_t countEffects{ 10 };
 	enum Effects : uint8_t { NO_EFFECT = 0x00, RAINBOW_ALL = 0x01, RAINBOW_EACH = 0x02, FIRE_ALL = 0x03, FIRE_EACH = 0x04, RAINBOW_PAIRS = 0x05,
-		 RUN_PAIRS = 0x06,  RUN_PAIRS_SOFT = 0x07, PAIRS_ON_SLOW_DOWN = 0x08} effect { NO_EFFECT };
+		 RUN_PAIRS = 0x06,  RUN_PAIRS_SOFT = 0x07, PAIRS_ON_SLOW_DOWN = 0x08, TWO_COLOR_CHANGE_HUE = 0x09, TWO_COLOR_CHANGE = 0x0a} effect { NO_EFFECT };
 
 	void setEffect(Effects eff);//{ ledSpeed = 5; effect = eff; }
 	void setEffectBright(uint8_t bright){ effBright = bright; }
@@ -97,7 +97,7 @@ public:
 	void rainbowPairs();
 	void pairsOnSlowDown();
 
-
+	void twoColorChange(bool hueUse);
 	void prepareEachHSV();
 	void prepareAllHSV();
 	void preparePairHSV();

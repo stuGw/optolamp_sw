@@ -39,6 +39,7 @@ void LedEffects::play()
 			case Effects::RUN_PAIRS_SOFT: { runPairsSoftHSV(); break; }
 			case Effects::PAIRS_ON_SLOW_DOWN: { pairsOnSlowDown(); break; }
 			case Effects::TWO_COLOR_CHANGE: { twoColorChange(false); break;}
+			case Effects::TWO_COLOR_CHANGE_HUE: { twoColorChange(true); break; }
 		}
 
 
@@ -58,22 +59,42 @@ void LedEffects::setEffect(Effects eff)
 			case Effects::RUN_PAIRS: { setSpeed(10); pairsOfLeds->getStripPtr()->setValue(0); break; }
 			case Effects::RUN_PAIRS_SOFT: { setSpeed(10); pairsOfLeds->getStripPtr()->setValue(0); pairsOfLeds->getPair(0)->setValue(effBright*5); break; }
 			case Effects::PAIRS_ON_SLOW_DOWN: {setSpeed(5); pairsOfLeds->getStripPtr()->setValue(0); break; }
-			case Effects::TWO_COLOR_CHANGE: { setSpeed(5); pairsOfLeds->getStripPtr()->setValue(0); break;}
+			case Effects::TWO_COLOR_CHANGE: { setSpeed(100); pairsOfLeds->getStripPtr()->setValue(0); break;}
+			case Effects::TWO_COLOR_CHANGE_HUE: { setSpeed(100); pairsOfLeds->getStripPtr()->setValue(0); break; }
 		}
 	//ledSpeed = 5;
 }
 void LedEffects::twoColorChange(bool hueUse)
 {
 	static uint16_t hue1 { 0 };
-	static uint16_t hue2 { 240 };
+	static uint16_t hue2 { 180 };
 	static uint16_t timer { 0 };
 	static uint16_t bright { 0 };
-	static bool sign { false };
+	static bool sign { true };
+	static uint8_t effBrightSaved { effBright };
+	static uint8_t additiveTimer { effBright*5 };
+	if(effBrightSaved!=effBright)
+	{
+		effBrightSaved = effBright;
+		timer = 0;
+		hue1 = 0;
+		hue2 = 180;
+		bright = 0;
+		sign = true;
+		additiveTimer = 0;//effBright*5;
+	}
 	if(timer == ledSpeed)
+	{
+		additiveTimer = effBrightSaved*5;
+		//timer = 0;
+
+	}
+
+	if(additiveTimer  == effBrightSaved*5)// effBrightSaved*5)
 	{
 		for(int i = 0; i<pairsOfLeds->getCount(); i++)
 		{
-			pairsOfLeds->getPair(i)->setValue(bright,10-bright);
+			pairsOfLeds->getPair(i)->setValue(bright,effBrightSaved*5-bright);
 			pairsOfLeds->getPair(i)->setHue(hue1,hue2);
 		}
 		pairsOfLeds->refresh();
@@ -81,23 +102,44 @@ void LedEffects::twoColorChange(bool hueUse)
 
 		if(sign)
 		{
-			if(bright>effBright*5)
+			if(bright>effBrightSaved*5)
 			{
-				//	if(!hue2)hue2=240;else hue2 = 0;
-				bright = effBright*5;sign = false;
+				if(hueUse)
+				{
+					//if(!hue2)hue2=180;else hue2 = 0;
+					if(hue2<=330)hue2+=30;else hue2 = 0;//30-360-hue2;
+				}
+				//if(!hue2)hue2=240;else hue2 = 0;
+				bright = effBrightSaved*5;sign = false;
+				//if(hue2<=330)hue2+=30;else hue2 = 0;//30-360-hue2;
+				//hue2 = hue1;
 			}
 		}
 		else
 		{
 			if(bright == 0)
 			{
+				if(hueUse)
+				{
+					//if(!hue1)hue1=180;else hue1 = 0;
+					if(hue1<=330)hue1+=30;else hue1 = 0;//30-360-hue1;
+				}
 				//	if(!hue1)hue1=240;else hue1 = 0;
+				//if(hue1<=180)hue1+=180;else hue1 = 0;//30-360-hue1;
 				sign = true;
 			}
 		}
-		timer = 0;
+		additiveTimer--;
 	}
-	timer++;
+	else
+	{
+		if(additiveTimer) additiveTimer--;
+		else
+			timer = 0;
+		timer++;
+	}
+
+
 }
 void LedEffects::rainbowAllHSV()
 {

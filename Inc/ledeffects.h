@@ -14,10 +14,17 @@ class LedEffects {
 	SmartPixelStrip* leds { nullptr };
 	LedPairs* pairsOfLeds { nullptr };
 
-	uint32_t ledSpeed { 1 };
+	uint32_t effectTime { 0 };
 	uint16_t rainbowEachColorDiff { 45 };
 	uint8_t effBright { 5 };
+	uint8_t effBrightSaved { effBright };
 	uint16_t rnbPairColorCoef { 50 };
+
+	uint8_t currentBright { 1 };
+	uint16_t currentHue { 0 };
+    uint8_t currentPair { 0 };
+	uint8_t delay { 0 };
+	bool sign { false };
 
 	static constexpr uint8_t FR_CF_LED_CNT { 62 };
 
@@ -70,17 +77,18 @@ public:
 	LedEffects(LedPairs* pairs);
 	virtual ~LedEffects();
 	inline SmartPixelStrip* getLedsStrip() { return leds; }
-	static constexpr uint8_t countEffects{ 10 };
+	static constexpr uint8_t countEffects{ 11 };
 	enum Effects : uint8_t { NO_EFFECT = 0x00, RAINBOW_ALL = 0x01, RAINBOW_EACH = 0x02, FIRE_ALL = 0x03, FIRE_EACH = 0x04, RAINBOW_PAIRS = 0x05,
-		 RUN_PAIRS = 0x06,  RUN_PAIRS_SOFT = 0x07, PAIRS_ON_SLOW_DOWN = 0x08, TWO_COLOR_CHANGE_HUE = 0x09, TWO_COLOR_CHANGE = 0x0a} effect { NO_EFFECT };
+		 RUN_PAIRS = 0x06,  RUN_PAIRS_SOFT = 0x07, PAIRS_ON_SLOW_DOWN = 0x08, TWO_COLOR_CHANGE_HUE = 0x09, TWO_COLOR_CHANGE = 0x0a, SINGLE_PAIR = 0x0b} effect { NO_EFFECT };
 
 	void setEffect(Effects eff);//{ ledSpeed = 5; effect = eff; }
 	void setEffectBright(uint8_t bright){ effBright = bright; }
-	void setSpeed(uint32_t speed){ ledSpeed = speed; }
+	uint32_t effectLastTime { 0 };
+	void setTime(uint32_t time){ effectTime = time; }
 
 	void setRainbowEachPairCoefficient(uint16_t coef);
 
-	void play();
+	void play(uint32_t time);
 	void rainbowAll();
 	void rainbowAllHSV();
 	void runPairsHSV();
@@ -93,7 +101,7 @@ public:
 
 	void runPairs();
 	void runPairsSoft();
-	void runPairsSoftHSV();
+	void runPairsSoftHSV(bool flagLong);
 	void rainbowPairs();
 	void pairsOnSlowDown();
 

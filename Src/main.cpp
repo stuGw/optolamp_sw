@@ -56,6 +56,9 @@ RTCTime time;//using to configure and read realtime
 CRCHw crc;
 uint8_t flgWSTransfer = 0;
 
+uint32_t milliseconds = 0;
+
+
 #if !defined(__SOFT_FP__) && defined(__ARM_FP)
 #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
 #endif
@@ -95,7 +98,7 @@ void TIM3_Handler(void)
 void SysTick_Handler()
 {
 
-	static uint32_t milliseconds = 0;
+   // uint64_t milliseconds = 0;
 
 	milliseconds++;
 	bLeft.timeIncrease();
@@ -440,7 +443,7 @@ int main(void)
 		configureLedPairs(&pairs);
 
 		LedEffects ledEffect(&pairs);
-		ledEffect.setSpeed(2500);
+		ledEffect.setTime(2500);
 
 
 		if(lampConfiguration.parameters.effectMode)
@@ -524,11 +527,11 @@ int main(void)
 
 		autoBrightLamp(&lampConfiguration, &ledEffect, &lightSensor);
 
-		if(flagButt)
-		{
-			flagSecund = 0;
-			if(lampConfiguration.parameters.effectMode)ledEffect.play();
-			flagButt = 0;
-		}
+	//	if(flagButt)
+	//	{
+	//		flagSecund = 0;
+			if(lampConfiguration.parameters.effectMode)ledEffect.play(milliseconds);
+	//		flagButt = 0;
+	//	}
 	}
 }

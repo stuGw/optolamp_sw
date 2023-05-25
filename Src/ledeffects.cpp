@@ -10,7 +10,7 @@
 constexpr uint8_t LedEffects::ledFArrBBr[21+1][62];
 constexpr uint8_t LedEffects::ledFireValueArr[62*2];
 constexpr uint8_t LedEffects::ledFArrC[];
-
+constexpr uint16_t LedEffects::colors[];
 
 LedEffects::LedEffects(SmartPixelStrip* strip) {
 	// TODO Auto-generated constructor stub
@@ -63,8 +63,8 @@ void LedEffects::setEffect(Effects eff)
 			case Effects::NO_EFFECT: break;
 			case Effects::RAINBOW_ALL: { setTime(50); prepareAllHSV();/*pairsOfLeds->setBright(effBright); leds->setBright(effBright); */break; }
 			case Effects::RAINBOW_EACH: {setTime(50); prepareEachHSV();  break; }
-			case Effects::FIRE_ALL: {setTime(75);  break; }
-			case Effects::FIRE_EACH: {setTime(75);  break; }
+			case Effects::FIRE_ALL: {setTime(75); pairsOfLeds->getStripPtr()->setHUE(8); break; }
+			case Effects::FIRE_EACH: {setTime(75); pairsOfLeds->getStripPtr()->setHUE(12); currentHue = 12; break; }
 			case Effects::RAINBOW_PAIRS: { setTime(50);; preparePairHSV(); break; }
 			case Effects::RUN_PAIRS: { setTime(200); pairsOfLeds->getStripPtr()->setValue(0); break; }
 			case Effects::RUN_PAIRS_SOFT: { setTime(20); pairsOfLeds->getStripPtr()->setValue(0); pairsOfLeds->getPair(0)->setValue(effBright*5); break; }
@@ -77,14 +77,15 @@ void LedEffects::setEffect(Effects eff)
 }
 void LedEffects::twoColorChange(bool hueUse)
 {
-	static uint16_t hue2 { 180 };
+	//static uint16_t hue2 { 180 };
 
 	if(effBrightSaved!=effBright)
 	{
 		effBrightSaved = effBright;
 		delay = 0;
 		currentHue = 0;
-		hue2 = 180;
+
+
 		currentBright = 0;
 		sign = true;
 	}
@@ -93,7 +94,7 @@ void LedEffects::twoColorChange(bool hueUse)
 		for(int i = 0; i<pairsOfLeds->getCount(); i++)
 		{
 			pairsOfLeds->getPair(i)->setValue(currentBright,effBrightSaved*5-currentBright);
-			pairsOfLeds->getPair(i)->setHue(currentHue,hue2);
+			pairsOfLeds->getPair(i)->setHue(currentHue, currentHue2);
 		}
 		pairsOfLeds->refresh();
 		if(sign){ currentBright++;}else { currentBright--;}
@@ -105,7 +106,7 @@ void LedEffects::twoColorChange(bool hueUse)
 				if(hueUse)
 				{
 					//if(!hue2)hue2=180;else hue2 = 0;
-					if(hue2<=330)hue2+=30;else hue2 = 0;//30-360-hue2;
+					if(currentHue2<=330)currentHue2+=30;else currentHue2 = 0;//30-360-hue2;
 				}
 				//if(!hue2)hue2=240;else hue2 = 0;
 				currentBright = effBrightSaved*5;
@@ -169,11 +170,13 @@ void LedEffects::prepareEachHSV()
 void LedEffects::preparePairHSV()
 {
 
+	currentHue = 0;
 	for(int i = 0; i < pairsOfLeds->getCount(); i++)
 	{
 		pairsOfLeds->getPair(i)->setHue(currentHue);
 		currentHue+=23;
 	}
+	pairsOfLeds->refresh();
 }
 
 void LedEffects::fireAll()
@@ -183,7 +186,7 @@ void LedEffects::fireAll()
 	for(int j = 0; j< leds->count(); j++)
 	{
 		leds->getLed(j)->setValue(ledFireValueArr[i]/currentBright);
-		leds->getLed(j)->setHUE(8);//setColor(0xff,0x36,0x05);
+		//leds->getLed(j)->setHUE(8);//setColor(0xff,0x36,0x05);
 	}
 
 	i++;
@@ -202,7 +205,8 @@ void LedEffects::fireEach()
 	{
 		leds->getLed(j)->setValue(ledFireValueArr[coefs[j]]/currentBright);
 		//leds->getLed(j)->setHUE(8 + coefs[j]);
-		leds->getLed(j)->setHUE(18 - ledFArrC[coefs[j]]);
+		if(currentHue<12) currentHue = 12;
+		leds->getLed(j)->setHUE(currentHue - ledFArrC[coefs[j]]);
 		coefs[j]++;
 		if(coefs[j]>=FR_CF_LED_CNT) coefs[j] = 0;
 	}

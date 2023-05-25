@@ -22,8 +22,11 @@ class LedEffects {
 
 	uint8_t currentBright { 1 };
 	uint16_t currentHue { 0 };
+	uint16_t currentHue2 { 180 };
     uint8_t currentPair { 0 };
 	uint8_t delay { 0 };
+	bool flagDiffHue { false };
+
 	bool sign { false };
 
 	static constexpr uint8_t FR_CF_LED_CNT { 62 };
@@ -81,6 +84,10 @@ public:
 	enum Effects : uint8_t { NO_EFFECT = 0x00, RAINBOW_ALL = 0x01, RAINBOW_EACH = 0x02, FIRE_ALL = 0x03, FIRE_EACH = 0x04, RAINBOW_PAIRS = 0x05,
 		 RUN_PAIRS = 0x06,  RUN_PAIRS_SOFT = 0x07, PAIRS_ON_SLOW_DOWN = 0x08, TWO_COLOR_CHANGE_HUE = 0x09, TWO_COLOR_CHANGE = 0x0a, SINGLE_PAIR = 0x0b} effect { NO_EFFECT };
 
+		 static constexpr uint8_t COLORS_COUNT { 20 };
+	   //static constexpr uint16_t colors[COLORS_COUNT] = {0, 18, 36, 52, 70, 88, 106, 124, 142, 160, 178, 196, 214, 236, 254, 272, 290, 318, 336, 354};
+		 static constexpr uint16_t colors[COLORS_COUNT] = {0, 07, 18, 36, 52, 88, 106, 124, 142, 160, 178, 196, 214, 236, 254, 272, 290, 318, 336, 354};
+
 	void setEffect(Effects eff);//{ ledSpeed = 5; effect = eff; }
 	void setEffectBright(uint8_t bright){ effBright = bright; }
 	uint32_t effectLastTime { 0 };
@@ -109,6 +116,21 @@ public:
 	void prepareEachHSV();
 	void prepareAllHSV();
 	void preparePairHSV();
+	void setCurrentHue(uint16_t hue){ currentHue = hue; }
+	bool isDiffHue(){ return flagDiffHue; }
+	void setDiffHue(bool flag)
+	{
+		flagDiffHue = flag;
+		if(flagDiffHue) preparePairHSV();
+	}
+	void setHue2(uint16_t hue){ currentHue2 = hue; }
+	void setPairsHue(uint16_t hueL, uint16_t hueR)
+	{
+		for(int i = 0; i< pairsOfLeds->getCount(); i++)
+		{
+			pairsOfLeds->getPair(i)->setHue(hueL, hueR);
+		}
+	}
 };
 
 #endif /* LEDEFFECTS_H_ */

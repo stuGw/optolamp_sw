@@ -34,6 +34,7 @@
 #include "memory24xx.h"
 #include "crchw.h"
 #include "version.h"
+#include "ledeffects.h"
 
 
 
@@ -198,11 +199,24 @@ bool getConfiguration(CONFIG* conf, Button *buttonR, Button *buttonL)
 
 	if(bLState == Button::DOUBLE)
 	{
+		//conf->parameters.effectMode = !conf->parameters.effectMode;
+		//if(conf->parameters.effectMode) LOG->DEBG("Effect mode on!"); else LOG->DEBG("Effect mode off");
+		//changed = true;
+		if(conf->parameters.effectMode)
+				{
+					conf->parameters.effectNo++;
+					if(conf->parameters.effectNo>LedEffects::countEffects)conf->parameters.effectNo = 1;
+					conf->effectChanged = true;
+				}
+		changed = true;
+	}
+
+	if(bLState == Button::LONG)
+	{
 		conf->parameters.effectMode = !conf->parameters.effectMode;
 		if(conf->parameters.effectMode) LOG->DEBG("Effect mode on!"); else LOG->DEBG("Effect mode off");
 		changed = true;
 	}
-
 	if(bRState == Button::SINGLE)
 	{
 		if(!conf->parameters.autoBright)
@@ -225,26 +239,23 @@ bool getConfiguration(CONFIG* conf, Button *buttonR, Button *buttonL)
 
 	if(bLState == Button::SINGLE)
 	{
-		if(conf->parameters.effectMode)
-		{
-			conf->parameters.effectNo++;
-			if(conf->parameters.effectNo>LedEffects::countEffects)conf->parameters.effectNo = 1;
-			conf->effectChanged = true;
-		}
-		else
-		{
 
-			conf->parameters.color+=10;
+
+			/*conf->parameters.color+=20;
 			if(conf->parameters.color>360)
 			{
-
 				conf->parameters.color = 0;
-			}
+			}*/
+
+			conf->parameters.color++;
+			if(conf->parameters.color >= LedEffects::COLORS_COUNT) conf->parameters.color = 0;
+
 
 			conf->colorChanged = true;
-		}
+
 		changed = true;
 	}
+
 	return changed || conf->brightChanged;
 }
 
@@ -260,14 +271,86 @@ void configureLamp(CONFIG* lampConfiguration, LedEffects* leds)
 
 
 		//color/effect
-		if(lampConfiguration->colorChanged)
-		{
-			leds->getLedsStrip()->setHUE(lampConfiguration->parameters.color);
-			//leds->getLedsStrip()->setColor(lampConfiguration->parameters.color);
-			lampConfiguration->colorChanged = false;
-			LOG->DEBG("Color changed! - ", lampConfiguration->parameters.color);
+	if(lampConfiguration->colorChanged)
+	{
 
+
+		if(lampConfiguration->parameters.effectMode)
+		{
+			switch (lampConfiguration->parameters.effectNo)
+			{
+			case LedEffects::NO_EFFECT:
+			{
+
+				break;
+			}
+			case LedEffects::RAINBOW_ALL: { break; }
+			case LedEffects::RAINBOW_EACH: {break; }
+			case LedEffects::FIRE_ALL...LedEffects::FIRE_EACH:
+			{
+				leds->getLedsStrip()->setHUE(LedEffects::colors[lampConfiguration->parameters.color]);
+				leds->setCurrentHue(LedEffects::colors[lampConfiguration->parameters.color]);
+				break;
+			}
+			case LedEffects::RAINBOW_PAIRS: {break; }
+			case LedEffects::RUN_PAIRS...LedEffects::PAIRS_ON_SLOW_DOWN:
+			{
+				if(leds->isDiffHue())
+				{
+					//lampConfiguration->parameters.color -= 20;
+					leds->setDiffHue(false);
+					leds->getLedsStrip()->setHUE(LedEffects::colors[lampConfiguration->parameters.color]);
+					leds->setCurrentHue(LedEffects::colors[lampConfiguration->parameters.color]);
+				}
+				else
+				{
+					if(lampConfiguration->parameters.color == (LedEffects::COLORS_COUNT - 1))
+					{
+						leds->setDiffHue(true);
+						lampConfiguration->parameters.color -= 1;
+					}
+					else
+					{
+						leds->getLedsStrip()->setHUE(LedEffects::colors[lampConfiguration->parameters.color]);
+						leds->setCurrentHue(LedEffects::colors[lampConfiguration->parameters.color]);
+					}
+				}
+
+				//leds->getLedsStrip()->setHUE(lampConfiguration->parameters.color);
+				//leds->setCurrentHue(lampConfiguration->parameters.color);
+				break;
+			}
+			case LedEffects::TWO_COLOR_CHANGE_HUE: {  break; }
+			case LedEffects::TWO_COLOR_CHANGE...LedEffects::SINGLE_PAIR:
+			{
+				uint16_t tmp { 0 };
+				if(LedEffects::colors[lampConfiguration->parameters.color] <= 180)
+					tmp = LedEffects::colors[lampConfiguration->parameters.color] + 180;
+				else
+					tmp = LedEffects::colors[lampConfiguration->parameters.color] - 180;
+
+				leds->setCurrentHue(LedEffects::colors[lampConfiguration->parameters.color]);
+				leds->setHue2(tmp);
+				leds->setPairsHue(LedEffects::colors[lampConfiguration->parameters.color], tmp);
+				leds->getLedsStrip()->refresh();
+				break;
+			}
+
+
+			}
 		}
+		else
+		{
+			leds->getLedsStrip()->setHUE(LedEffects::colors[lampConfiguration->parameters.color]);
+			leds->setCurrentHue(LedEffects::colors[lampConfiguration->parameters.color]);
+		}
+
+		//leds->getLedsStrip()->setColor(lampConfiguration->parameters.color);
+		lampConfiguration->colorChanged = false;
+		LOG->DEBG("Color changed! - ", LedEffects::colors[lampConfiguration->parameters.color]);
+
+	}
+
 
 		if(lampConfiguration->effectChanged)
 		{

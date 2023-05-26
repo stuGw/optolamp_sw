@@ -51,7 +51,7 @@ uint32_t* hwLA;
 AnalogConverter sensorADC;
 
 Serial serial;//serial, using in logger &
-Led *led;//just led
+
 RTCTime time;//using to configure and read realtime
 
 CRCHw crc;
@@ -75,14 +75,13 @@ void RTCIrq_Handler()
 {
 	if((RTC->MISR & 0x00000001) == 0x00000001){ RTC->SCR |= 0x00000001; flagMinute = 1; }
 	if((RTC->MISR & 0x00000002) == 0x00000002){ RTC->SCR |= 0x00000002; flagSecund = 1; }
-	led->on();
+
 }
 
 void DMA_2_3_Handler()
 {
 	stopWSDMA();
-	//stopTimer3();
-		 DMA->IFCR|=0x00000010;//DMA_IFCR_CGIF6;
+	DMA->IFCR|=0x00000010;//DMA_IFCR_CGIF6;
 }
 
 	//Таймер для реализации протокола ws2812
@@ -98,9 +97,6 @@ void TIM3_Handler(void)
 
 void SysTick_Handler()
 {
-
-   // uint64_t milliseconds = 0;
-
 	milliseconds++;
 	bLeft.timeIncrease();
 	bRight.timeIncrease();
@@ -121,8 +117,8 @@ void EXTI0_Handler()
 
 void initializeModules()
 {
-	led = new Led(&(GPIOC->ODR),GPIOPIN_13, false);
-		led->on();
+
+
 
 		serial.begin();
 		//serial.DEBG("Starting hardware initialization...");
@@ -199,15 +195,12 @@ bool getConfiguration(CONFIG* conf, Button *buttonR, Button *buttonL)
 
 	if(bLState == Button::DOUBLE)
 	{
-		//conf->parameters.effectMode = !conf->parameters.effectMode;
-		//if(conf->parameters.effectMode) LOG->DEBG("Effect mode on!"); else LOG->DEBG("Effect mode off");
-		//changed = true;
 		if(conf->parameters.effectMode)
-				{
-					conf->parameters.effectNo++;
-					if(conf->parameters.effectNo>LedEffects::countEffects)conf->parameters.effectNo = 1;
-					conf->effectChanged = true;
-				}
+		{
+			conf->parameters.effectNo++;
+			if(conf->parameters.effectNo>LedEffects::countEffects)conf->parameters.effectNo = 1;
+			conf->effectChanged = true;
+		}
 		changed = true;
 	}
 
@@ -239,19 +232,9 @@ bool getConfiguration(CONFIG* conf, Button *buttonR, Button *buttonL)
 
 	if(bLState == Button::SINGLE)
 	{
-
-
-			/*conf->parameters.color+=20;
-			if(conf->parameters.color>360)
-			{
-				conf->parameters.color = 0;
-			}*/
-
-			conf->parameters.color++;
-			if(conf->parameters.color >= LedEffects::COLORS_COUNT) conf->parameters.color = 0;
-
-
-			conf->colorChanged = true;
+		conf->parameters.color++;
+		if(conf->parameters.color >= LedEffects::COLORS_COUNT) conf->parameters.color = 0;
+		conf->colorChanged = true;
 
 		changed = true;
 	}
@@ -364,6 +347,8 @@ void configureLamp(CONFIG* lampConfiguration, LedEffects* leds)
 
 		if(!lampConfiguration->parameters.effectMode)
 		{
+			leds->getLedsStrip()->setHUE( LedEffects::colors[lampConfiguration->parameters.color]);
+			leds->getLedsStrip()->setValue(lampConfiguration->parameters.bright);
 			leds->getLedsStrip()->refresh();
 		}
 }
@@ -610,11 +595,7 @@ int main(void)
 
 		autoBrightLamp(&lampConfiguration, &ledEffect, &lightSensor);
 
-	//	if(flagButt)
-	//	{
-	//		flagSecund = 0;
-			if(lampConfiguration.parameters.effectMode)ledEffect.play(milliseconds);
-	//		flagButt = 0;
-	//	}
+		if(lampConfiguration.parameters.effectMode)ledEffect.play(milliseconds);
+
 	}
 }

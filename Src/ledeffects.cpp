@@ -65,13 +65,13 @@ void LedEffects::setEffect(Effects eff)
 			case Effects::RAINBOW_EACH: {setTime(50); prepareEachHSV();  break; }
 			case Effects::FIRE_ALL: {setTime(75); pairsOfLeds->getStripPtr()->setHUE(8); break; }
 			case Effects::FIRE_EACH: {setTime(75); pairsOfLeds->getStripPtr()->setHUE(12); currentHue = 12; break; }
-			case Effects::RAINBOW_PAIRS: { setTime(50);; preparePairHSV(); break; }
+			case Effects::RAINBOW_PAIRS: { setTime(50); preparePairHSV(); break; }
 			case Effects::RUN_PAIRS: { setTime(200); pairsOfLeds->getStripPtr()->setValue(0); break; }
 			case Effects::RUN_PAIRS_SOFT: { setTime(20); pairsOfLeds->getStripPtr()->setValue(0); pairsOfLeds->getPair(0)->setValue(effBright*5); break; }
 			case Effects::PAIRS_ON_SLOW_DOWN: { delay = 0; currentBright = effBright*5;  setTime(30); pairsOfLeds->getStripPtr()->setValue(0); break; }
 			case Effects::TWO_COLOR_CHANGE: { setTime(100); pairsOfLeds->getStripPtr()->setValue(0); break;}
 			case Effects::TWO_COLOR_CHANGE_HUE: { setTime(100); pairsOfLeds->getStripPtr()->setValue(0); break; }
-			case Effects::SINGLE_PAIR: { setTime(100); pairsOfLeds->getStripPtr()->setValue(0); pairsOfLeds->getPair(0)->setValue(effBright*5); break;}
+			case Effects::SINGLE_PAIR: { setTime(1); pairsOfLeds->getStripPtr()->setValue(0); pairsOfLeds->getPair(0)->setValue(effBright*5); break;}
 		}
 	//ledSpeed = 5;
 }
